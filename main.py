@@ -1,3 +1,4 @@
+import os
 from flask import Flask, jsonify
 from app.utils.limiter import limiter
 from app.utils.logging import Logger
@@ -59,6 +60,22 @@ UserManagment.getInstance()._checkTable()
 AuthenticationManager.getInstance()._checkTable()
 ClothingManager.getInstance()._checkTable()
 OutfitManager.getInstance()._checkTable()
+
+if not os.path.exists("logs"):
+    try:
+        os.makedirs("logs")
+    except OSError as e:
+        logger.error(f"Error creating logs directory: {e}")
+        
+    logger.info("Logs directory created or already exists.")
+
+if not os.path.exists("app/static/temp"):
+    try:
+        os.makedirs("app/static/temp")
+    except OSError as e:
+        logger.error(f"Error creating temp directory: {e}")
+        
+    logger.info("Temporary images directory created or already exists.")
 
 
 if __name__ == '__main__':
