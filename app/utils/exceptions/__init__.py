@@ -5,6 +5,8 @@ from app.utils.exceptions.base import (
     ClothingValidationError,
     ClothingNotFoundError,
     ClothingConflictError,
+    OutfitValidationError,
+    OutfitNotFoundError,
     AuthValidationError
 )
 
@@ -19,6 +21,13 @@ from app.utils.exceptions.clothing import (
     ClothingNameTooLongError,
     ClothingDescriptionTooLongError,
     ClothingImageInvalidError
+)
+from app.utils.exceptions.outfits import (
+    OutfitIDMissingError,
+    OutfitNameMissingError,
+    OutfitNameTooShortError,
+    OutfitNameTooLongError,
+    OutfitDescriptionTooLongError
 )
 from app.utils.exceptions.auth import AuthTokenExpiredError, AuthAccessTokenInvalidError, AuthRefreshTokenInvalidError, AuthAccessTokenMissingError, AuthRefreshTokenMissingError, AuthUserIDMissingError
 
@@ -42,6 +51,13 @@ __all__ = [
     "ClothingNameTooLongError",
     "ClothingDescriptionTooLongError",
     "ClothingImageInvalidError",
+    "OutfitValidationError",
+    "OutfitNotFoundError",
+    "OutfitIDMissingError",
+    "OutfitNameMissingError",
+    "OutfitNameTooShortError",
+    "OutfitNameTooLongError",
+    "OutfitDescriptionTooLongError",
     "AuthTokenExpiredError",
     "AuthAccessTokenInvalidError",
     "AuthRefreshTokenInvalidError",

@@ -24,6 +24,16 @@ class ClothingConflictError(ConflictError):
     def __init__(self, message="Clothing conflict error occurred"):
         super().__init__(message)
         
+# Outfit
+
+class OutfitValidationError(ValidationError):
+    def __init__(self, message="Outfit validation error occurred"):
+        super().__init__(message)
+        
+class OutfitNotFoundError(NotFoundError):
+    def __init__(self, message="Outfit not found"):
+        super().__init__(message)
+        
 # Authentication
 
 class AuthValidationError(ValidationError):
