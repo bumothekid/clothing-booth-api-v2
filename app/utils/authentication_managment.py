@@ -1,6 +1,7 @@
 import random
 import base64
 import jwt
+from os import getenv
 from typing import Optional
 from string import ascii_letters, digits
 import traceback
@@ -10,7 +11,7 @@ from app.utils.database import Database
 from app.utils.exceptions import AuthValidationError, AuthTokenExpiredError, AuthAccessTokenInvalidError, AuthRefreshTokenInvalidError, AuthAccessTokenMissingError, AuthRefreshTokenMissingError, AuthUserIDMissingError
 from app.utils.logging import Logger
 
-SECRET_TOKEN_KEY = 'pnzayYqtQ9itwi2BqYFQcZy2uJrr3tLL'
+SECRET_TOKEN_KEY = getenv("SECRET_TOKEN_KEY")
 ACCESS_TOKEN_EXPIRY_HOURS = 1
 REFRESH_TOKEN_EXPIRY_DAYS = 90
 TOKEN_LENGTH = 16
