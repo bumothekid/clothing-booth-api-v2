@@ -1,6 +1,7 @@
 import random
 import base64
 import jwt
+from typing import Optional
 from string import ascii_letters, digits
 import traceback
 from datetime import datetime, timedelta
@@ -55,8 +56,8 @@ class AuthenticationManager:
                            );
                            """)
             conn.commit()
-    
-    def generate_token_pair(self, user_id: str, is_guest: bool) -> tuple:
+
+    def generate_token_pair(self, user_id: Optional[str], is_guest: Optional[bool]) -> tuple:
         if not isinstance(user_id, str) or not user_id.strip():
             raise AuthUserIDMissingError("The user_id is missing or invalid.")
         
@@ -84,7 +85,7 @@ class AuthenticationManager:
             logger.error(traceback.format_exc())
             raise
 
-    def refresh_access_token(self, old_access_token: str | None, refresh_token: str | None) -> tuple:
+    def refresh_access_token(self, old_access_token: Optional[str], refresh_token:  Optional[str]) -> tuple:
         if not isinstance(old_access_token, str) or not old_access_token.strip():
             raise AuthAccessTokenMissingError("The access_token is missing.")
         if not isinstance(refresh_token, str) or not refresh_token.strip():
@@ -129,7 +130,7 @@ class AuthenticationManager:
             logger.error(traceback.format_exc())
             raise e
             
-    def delete_refresh_token(self, refresh_token: str | None) -> None:
+    def delete_refresh_token(self, refresh_token: Optional[str]) -> None:
         if not isinstance(refresh_token, str) or not refresh_token.strip():
             raise AuthRefreshTokenMissingError("The refresh_token is missing or invalid.")
 
@@ -149,6 +150,9 @@ class AuthenticationManager:
             raise e
 
     def get_user_id_from_token(self, token: str) -> str:
+        if not isinstance(token, str) or not token.strip():
+            raise AuthAccessTokenMissingError("The access_token is missing or invalid.")
+        
         try:
             payload = self._get_payload_from_access_token(token)
             return payload.get('sub')
