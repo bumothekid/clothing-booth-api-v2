@@ -10,6 +10,7 @@ from app.utils.exceptions.base import (
 
 from app.utils.exceptions.validation import UnsupportedFileTypesError, FileTooLargeError, ImageUnclearError
 from app.utils.exceptions.clothing import (
+    ClothingIDMissingError,
     ClothingNameMissingError,
     ClothingCategoryMissingError,
     ClothingColorMissingError,
@@ -35,6 +36,7 @@ __all__ = [
     "ClothingNameMissingError",
     "ClothingCategoryMissingError",
     "ClothingColorMissingError",
+    "ClothingIDMissingError",
     "ClothingImageMissingError",
     "ClothingNameTooShortError",
     "ClothingNameTooLongError",

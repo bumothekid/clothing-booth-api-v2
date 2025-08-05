@@ -1,5 +1,9 @@
 from app.utils.exceptions.base import ClothingValidationError, ClothingConflictError
 
+class ClothingIDMissingError(ClothingValidationError):
+    def __init__(self, message="Clothing ID is missing"):
+        super().__init__(message)
+
 class ClothingNameMissingError(ClothingValidationError):
     def __init__(self, message="Clothing name is missing"):
         super().__init__(message)

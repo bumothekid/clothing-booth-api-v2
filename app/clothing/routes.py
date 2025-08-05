@@ -35,7 +35,7 @@ def create_clothing_piece():
 @authorize_request
 def get_clothing_piece(clothing_id: str):
     token = request.headers["Authorization"]
-    clothing = ClothingManager.getInstance().get_clothing_by_id(clothing_id, token)
+    clothing = ClothingManager.getInstance().get_clothing_by_id(token, clothing_id)
     return jsonify(clothing.to_dict()), 200
 
 @clothing.route('/list/<user_id>', methods=['GET'])
@@ -46,20 +46,7 @@ def get_clothing_list(user_id: str):
     limit = request.args.get("limit", None)
     offset = request.args.get("offset", None)
 
-    if not limit and not offset:
-        clothing_list = ClothingManager.getInstance().get_list_of_clothing_by_user_id(user_id, token)
-    else:
-        if limit:
-            limit = int(limit)
-        else:
-            limit = 10000
-
-        if offset:
-            offset = int(offset)
-        else:
-            offset = 0
-        
-        clothing_list = ClothingManager.getInstance().get_list_of_clothing_by_user_id(user_id, token, limit, offset)
+    clothing_list = ClothingManager.getInstance().get_list_of_clothing_by_user_id(token, user_id, limit, offset)
 
     return jsonify({"limit": limit, "offset": offset, "clothing": [clothing.to_dict() for clothing in clothing_list]}), 200
 
@@ -69,7 +56,7 @@ def get_clothing_list(user_id: str):
 def delete_clothing_piece(clothing_id: str):
     token = request.headers["Authorization"]
     
-    ClothingManager.getInstance().delete_clothing_by_id(clothing_id, token)
+    ClothingManager.getInstance().delete_clothing_by_id(token, clothing_id)
 
     return "", 204
 

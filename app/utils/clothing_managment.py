@@ -3,7 +3,7 @@ import uuid
 from re import match as re_match
 from datetime import datetime
 from app.utils.database import Database
-from app.utils.exceptions import ClothingNotFoundError, ClothingImageInvalidError, ClothingNameMissingError, ClothingCategoryMissingError, ClothingColorMissingError, ClothingImageMissingError, ClothingNameTooShortError, ClothingNameTooLongError, ClothingDescriptionTooLongError
+from app.utils.exceptions import ClothingNotFoundError, ClothingImageInvalidError, ClothingNameMissingError, ClothingCategoryMissingError, ClothingColorMissingError, ClothingImageMissingError, ClothingNameTooShortError, ClothingNameTooLongError, ClothingDescriptionTooLongError, ClothingIDMissingError
 from typing import Optional
 from mysql.connector.errors import IntegrityError
 from app.models.clothing import Clothing, ClothingCategory, ClothingSeason, ClothingTags
@@ -149,8 +149,11 @@ class ClothingManager:
             raise e
 
         return clothing
-    
-    def get_clothing_by_id(self, clothing_id: str, token: str) -> Clothing:
+
+    def get_clothing_by_id(self, token: str, clothing_id: Optional[str]) -> Clothing:
+        if not isinstance(clothing_id, str) or not clothing_id.strip():
+            raise ClothingIDMissingError("The clothing ID is missing.")
+
         user_id = AuthenticationManager.getInstance().get_user_id_from_token(token)
         
         try:
@@ -184,7 +187,7 @@ class ClothingManager:
         
         return clothing
 
-    def get_list_of_clothing_by_user_id(self, user_id: str, token: str, limit: int = 18446744073709551615, offset: int = 0) -> list[Clothing]:
+    def get_list_of_clothing_by_user_id(self, token: str, user_id: str, limit: int = 1000, offset: int = 0) -> list[Clothing]:
         user_id_from_token = AuthenticationManager.getInstance().get_user_id_from_token(token)
         
         clothes_list: list[Clothing] = []
@@ -284,6 +287,9 @@ class ClothingManager:
     """
     
     def delete_clothing_by_id(self, token: str, clothing_id: str) -> None:
+        if not isinstance(clothing_id, str) or not clothing_id.strip():
+            raise ClothingIDMissingError("The clothing ID is missing.")
+        
         user_id = AuthenticationManager.getInstance().get_user_id_from_token(token)
         
         try:    
