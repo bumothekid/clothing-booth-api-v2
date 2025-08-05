@@ -1,6 +1,6 @@
 from app.utils.exceptions.base import ValidationError
 
-class UnsupportedFileTypesError(ValidationError):
+class UnsupportedFileTypeError(ValidationError):
     def __init__(self, message="Unsupported file type [Supported: .png, .jpg, .jpeg]"):
         super().__init__(message)
 

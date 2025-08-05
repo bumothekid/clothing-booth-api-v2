@@ -8,7 +8,7 @@ from app.utils.exceptions.base import (
     AuthValidationError
 )
 
-from app.utils.exceptions.validation import UnsupportedFileTypesError, FileTooLargeError, ImageUnclearError
+from app.utils.exceptions.validation import UnsupportedFileTypeError, FileTooLargeError, ImageUnclearError
 from app.utils.exceptions.clothing import (
     ClothingIDMissingError,
     ClothingNameMissingError,
@@ -30,7 +30,7 @@ __all__ = [
     "ClothingNotFoundError",
     "ClothingConflictError",
     "AuthValidationError",
-    "UnsupportedFileTypesError",
+    "UnsupportedFileTypeError",
     "FileTooLargeError",
     "ImageUnclearError",
     "ClothingNameMissingError",
