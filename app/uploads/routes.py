@@ -45,6 +45,11 @@ def getClothingImage(clothing_id):
 @uploads.route('/temp/<filename>', methods=['GET'])
 @limiter.limit("2 per minute")
 def getTempImage(filename):
+    if not filename:
+        return jsonify({"error": "Filename is required"}), 400
+
+    filename = filename.strip() + ".webp" if not filename.endswith(".webp") else filename
+
     try:
         return send_from_directory('app/static/temp', f'{filename}')
     except NotFound:

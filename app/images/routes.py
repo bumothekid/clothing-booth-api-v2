@@ -1,7 +1,6 @@
-import os
 from flask import Blueprint, request, jsonify
 from app.utils.limiter import limiter
-from app.utils.exceptions import UnsupportedFileTypeError, FileTooLargeError, ImageUnclear
+from app.utils.exceptions import FileTooLargeError, ImageUnclearError
 from app.utils.authentication_managment import authorize_request
 from app.utils.image_managment import ImageManager
 
@@ -22,11 +21,9 @@ def generate_image():
         return jsonify({"error": "File is too large (max 4MB)"}), 413
     try:
         removed_background_url, _ = ImageManager.getInstance().remove_background(file)
-    except (UnsupportedFileTypeError) as e:
-        return jsonify({"error": str(e)}), 400
     except FileTooLargeError as e:
         return jsonify({"error": str(e)}), 413
-    except ImageUnclear as e:
+    except ImageUnclearError as e:
         return jsonify({"error": str(e)}), 422
 
     return jsonify({"image_url": removed_background_url}), 201
