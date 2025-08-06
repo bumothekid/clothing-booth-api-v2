@@ -187,9 +187,11 @@ class ClothingManager:
         
         return clothing
 
-    def get_list_of_clothing_by_user_id(self, token: str, user_id: str, limit: int = 1000, offset: int = 0) -> list[Clothing]:
+    def get_list_of_clothing_by_user_id(self, token: str, user_id: Optional[str], limit: int = 1000, offset: int = 0) -> list[Clothing]:
+        if not isinstance(user_id, str) or not user_id.strip():
+            raise ClothingIDMissingError("The provided user ID is missing or invalid.")
+
         user_id_from_token = AuthenticationManager.getInstance().get_user_id_from_token(token)
-        
         clothes_list: list[Clothing] = []
 
         statement = f"SELECT clothing_id, is_public, name, category, color, created_at, user_id, image, description FROM clothing WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
