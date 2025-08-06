@@ -5,7 +5,8 @@ from app.utils.logging import get_logger
 from app.utils.exceptions import (
     ValidationError,
     NotFoundError,
-    ConflictError
+    ConflictError,
+    PermissionError
 )
 from app.utils.authentication_managment import AuthenticationManager
 from app.utils.user_managment import UserManagment
@@ -47,6 +48,10 @@ def not_found_error_handler(error):
 @api.errorhandler(ConflictError)
 def conflict_error_handler(error):
     return jsonify({"error": str(error)}), 409
+
+@api.errorhandler(PermissionError)
+def outfit_permission_error_handler(error):
+    return jsonify({"error": str(error)}), 403
 
 @api.errorhandler(Exception)
 def internal_error_handler(error):
