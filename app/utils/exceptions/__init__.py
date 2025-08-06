@@ -2,11 +2,13 @@ from app.utils.exceptions.base import (
     ValidationError,
     NotFoundError,
     ConflictError,
+    PermissionError,
     ClothingValidationError,
     ClothingNotFoundError,
     ClothingConflictError,
     OutfitValidationError,
     OutfitNotFoundError,
+    OutfitPermissionError,
     AuthValidationError
 )
 
@@ -25,7 +27,12 @@ from app.utils.exceptions.clothing import (
 from app.utils.exceptions.outfits import (
     OutfitIDMissingError,
     OutfitClothingIDsMissingError,
+    OutfitClothingIDInvalidError,
     OutfitNameMissingError,
+    OutfitSeasonsInvalidError,
+    OutfitTagsInvalidError,
+    OutfitLimitInvalidError,
+    OutfitOffsetInvalidError,
     OutfitNameTooShortError,
     OutfitNameTooLongError,
     OutfitDescriptionTooLongError
@@ -36,6 +43,8 @@ __all__ = [
     "ValidationError",
     "NotFoundError",
     "ConflictError",
+    "PermissionError",
+    "OutfitPermissionError",
     "ClothingValidationError",
     "ClothingNotFoundError",
     "ClothingConflictError",
@@ -57,6 +66,11 @@ __all__ = [
     "OutfitIDMissingError",
     "OutfitClothingIDsMissingError",
     "OutfitNameMissingError",
+    "OutfitClothingIDInvalidError",
+    "OutfitSeasonsInvalidError",
+    "OutfitTagsInvalidError",
+    "OutfitLimitInvalidError",
+    "OutfitOffsetInvalidError",
     "OutfitNameTooShortError",
     "OutfitNameTooLongError",
     "OutfitDescriptionTooLongError",

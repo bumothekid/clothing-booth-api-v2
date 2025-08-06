@@ -9,6 +9,10 @@ class NotFoundError(Exception):
 class ConflictError(Exception):
     def __init__(self, message="Conflict occurred"):
         super().__init__(message)
+        
+class PermissionError(Exception):
+    def __init__(self, message="You do not have permission to access this resource"):
+        super().__init__(message)
 
 # Clothing
 
@@ -32,6 +36,10 @@ class OutfitValidationError(ValidationError):
         
 class OutfitNotFoundError(NotFoundError):
     def __init__(self, message="Outfit not found"):
+        super().__init__(message)
+
+class OutfitPermissionError(PermissionError):
+    def __init__(self, message="You do not have permission to access this outfit"):
         super().__init__(message)
         
 # Authentication
