@@ -13,12 +13,7 @@ def generate_image():
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
     
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "No file selected"}), 400
-    size = file.read()
-    if len(size) > 4*1024*1024:
-        return jsonify({"error": "File is too large (max 4MB)"}), 413
+    file = request.files.get("file", None)
     try:
         removed_background_url, _ = image_manager.remove_background(file)
     except FileTooLargeError as e:
