@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, Response
-from ..utils.user_managment import UserManagment
+from ..utils.user_managment import user_manager
 from ..utils.exceptions import UsernameTooShortError, UsernameTooLongError, UsernameAlreadyInUseError, UserNotFoundError, UnsupportedFileTypeError, UserProfilePictureNotFoundError
 from ..utils.limiter import limiter
 from ..utils.authentication_managment import authorize_request
@@ -19,7 +19,7 @@ def setUsername():
         return jsonify({"error": "Missing username"}), 400
     
     try:
-        username, oldUsername = UserManagment.getInstance().setUsername(data["username"], token)
+        username, oldUsername = user_manager.setUsername(data["username"], token)
     except (UsernameTooShortError, UsernameTooLongError) as e:
         return jsonify({"error": str(e)}), 400
     except UsernameAlreadyInUseError as e:
@@ -34,7 +34,7 @@ def setUsername():
 def getMyUser():
     token = request.headers["Authorization"]
     
-    user = UserManagment.getInstance().getMyUser(token)
+    user = user_manager.getMyUser(token)
     
     return jsonify(user.__dict__), 200
 
@@ -43,7 +43,7 @@ def getMyUser():
 @authorize_request
 def getUserByUserID(userid: str):
     try:
-        user = UserManagment.getInstance().getUserByUserID(userid)
+        user = user_manager.getUserByUserID(userid)
     except UserNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     
@@ -54,7 +54,7 @@ def getUserByUserID(userid: str):
 @authorize_request
 def getUserProfilePicture(userid: str):
     try:
-        profilePictureURL = UserManagment.getInstance().getUserProfilePicture(userid)
+        profilePictureURL = user_manager.getUserProfilePicture(userid)
     except UserNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     
@@ -85,7 +85,7 @@ def setMyUserProfilePicture(token: str) -> Response:
             profilePicture += ".png"
         
         try:
-            user = UserManagment.getInstance().setDefaultProfilePicture(profilePicture, token)
+            user = user_manager.setDefaultProfilePicture(profilePicture, token)
         except UserProfilePictureNotFoundError as e:
             return jsonify({"error": str(e)}), 404
     
@@ -99,20 +99,20 @@ def setMyUserProfilePicture(token: str) -> Response:
     file.seek(0)
     
     try:
-        user = UserManagment.getInstance().setProfilePicture(file, token)
+        user = user_manager.setProfilePicture(file, token)
     except UnsupportedFileTypeError as e:
         return jsonify({"error": str(e)}), 400
     
     return jsonify(user.__dict__), 200
 
 def getMyUserProfilePicture(token: str) -> Response:
-    profilePictureURL = UserManagment.getInstance().getMyProfilePicture(token)
+    profilePictureURL = user_manager.getMyProfilePicture(token)
     
     return jsonify({"path": f"{str(profilePictureURL)}"}), 200
 
 def deleteMyUserProfilePicture(token: str):
     try:
-        UserManagment.getInstance().removeProfilePicture(token)
+        user_manager.removeProfilePicture(token)
     except UserProfilePictureNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     

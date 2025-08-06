@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, send_from_directory
 from app.utils.limiter import limiter
 from app.utils.logging import get_logger
 from werkzeug.exceptions import NotFound
-from app.utils.user_managment import UserManagment
+from app.utils.user_managment import user_manager
 from app.utils.exceptions import UserNotFoundError
 
 uploads = Blueprint("uploads", __name__)
@@ -20,7 +20,7 @@ def getProfilePicture(user_id=None, filename=None):
         return send_from_directory('app/static/profile_pictures', f'{user_id}.webp')
     except NotFound:
         try:
-            return send_from_directory(UserManagment.getInstance().getUserProfilePicture(user_id))
+            return send_from_directory(user_manager.getUserProfilePicture(user_id))
         except UserNotFoundError as e:
             return send_from_directory('app/static/profile_pictures/default', f'{user_id}.png')
         except Exception as e:

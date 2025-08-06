@@ -1,7 +1,7 @@
 import re
 from flask import Blueprint, request, jsonify
 from app.models.outfit import OutfitSeason, OutfitTags
-from app.utils.outfit_managment import OutfitManager
+from app.utils.outfit_managment import outfit_manager
 from app.utils.exceptions import OutfitNameTooLongError, OutfitDescriptionTooLongError, OutfitNameTooLongError, OutfitNameTooShortError, OutfitNotFoundError
 from app.utils.limiter import limiter
 from app.utils.authentication_managment import authorize_request
@@ -44,7 +44,7 @@ def create_outfit():
         if not clothing_ids:
             return jsonify({"error": "The clothing_ids field cannot be empty."}), 400
         
-        outfit = OutfitManager.getInstance().create_outfit(token, name, seasons_list, tags_list, clothing_ids, description)
+        outfit = outfit_manager.create_outfit(token, name, seasons_list, tags_list, clothing_ids, description)
     except (OutfitNameTooShortError, OutfitNameTooLongError, OutfitDescriptionTooLongError) as e:
         return jsonify({"error": str(e)}), 400
     
@@ -56,7 +56,7 @@ def create_outfit():
 def get_outfit(outfit_id: str):
     token = request.headers["Authorization"]
     try:
-        outfit = OutfitManager.getInstance().get_outfit_by_id(outfit_id, token)
+        outfit = outfit_manager.get_outfit_by_id(outfit_id, token)
     except OutfitNotFoundError as e:
         return jsonify({"error": str(e)}), 404
 
@@ -71,7 +71,7 @@ def get_outfit_list(user_id: str):
     offset = request.args.get("offset", None)
 
     if not limit and not offset:
-        outfit_list = OutfitManager.getInstance().get_list_of_outfits_by_user_id(user_id, token)
+        outfit_list = outfit_manager.get_list_of_outfits_by_user_id(user_id, token)
     else:
         if limit:
             limit = int(limit)
@@ -83,7 +83,7 @@ def get_outfit_list(user_id: str):
         else:
             offset = 0
 
-        outfit_list = OutfitManager.getInstance().get_list_of_outfits_by_user_id(user_id, token, limit, offset)
+        outfit_list = outfit_manager.get_list_of_outfits_by_user_id(user_id, token, limit, offset)
 
     return jsonify({"limit": limit, "offset": offset, "outfits": [outfit.to_dict() for outfit in outfit_list]}), 200
 
@@ -93,7 +93,7 @@ def get_outfit_list(user_id: str):
 def delete_outfit(outfit_id: str):
     token = request.headers["Authorization"]
     try:
-        OutfitManager.getInstance().delete_outfit(outfit_id, token)
+        outfit_manager.delete_outfit(outfit_id, token)
     except OutfitNotFoundError as e:
         return jsonify({"error": str(e)}), 404
 

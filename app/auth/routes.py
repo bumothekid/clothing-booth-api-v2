@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
-from app.utils.exceptions import EmailInvalidError, PasswordTooShortError, UsernameTooLongError, UsernameTooShortError, EmailAlreadyInUseError, WrongSignInCredentialsError, UsernameAlreadyInUseError, AuthValidationError, UserProfilePictureNotFoundError
-from app.utils.authentication_managment import AuthenticationManager,  authorize_request
-from app.utils.user_managment import UserManagment
+#from app.utils.exceptions import EmailInvalidError, PasswordTooShortError, UsernameTooLongError, UsernameTooShortError, EmailAlreadyInUseError, WrongSignInCredentialsError, UsernameAlreadyInUseError, AuthValidationError, UserProfilePictureNotFoundError
+from app.utils.authentication_managment import authentication_manager,  authorize_request
+from app.utils.user_managment import user_manager
 from app.utils.limiter import limiter
 
 auth = Blueprint("auth", __name__)
@@ -10,7 +10,7 @@ auth = Blueprint("auth", __name__)
 @auth.route('/guest', methods=['POST'])
 @limiter.limit('5 per hour')
 def register_guest():
-    access_token, expires_in, refresh_token = UserManagment.getInstance().register_guest()
+    access_token, expires_in, refresh_token = user_manager.register_guest()
 
     return jsonify({"access_token": access_token, "expires_in": expires_in, "refresh_token": refresh_token}), 201
 
@@ -21,7 +21,7 @@ def refresh_token():
     refresh_token = data.get("refresh_token")
     access_token = data.get("access_token")
 
-    access_token, expires_in, refresh_token = AuthenticationManager.getInstance().refresh_access_token(access_token, refresh_token)
+    access_token, expires_in, refresh_token = authentication_manager.refresh_access_token(access_token, refresh_token)
 
     return jsonify({"access_token": access_token, "expires_in": expires_in, "refresh_token": refresh_token}), 200
 
@@ -32,7 +32,7 @@ def delete_refresh_token():
     data = request.get_json()
     refresh_token = data.get("refresh_token")
 
-    AuthenticationManager.getInstance().delete_refresh_token(refresh_token)
+    authentication_manager.delete_refresh_token(refresh_token)
 
     return "", 204
 
@@ -59,7 +59,7 @@ def login():
         return jsonify({"error": f"The provided data doesn't contain the following fields: {', '.join(missing_data)}."}), 400
     
     try:
-         access_token, expires_in, refresh_token = UserManagment.getInstance().loginWithCredentials(data["password"], data.get("username"), data.get("email"))
+         access_token, expires_in, refresh_token = user_manager.loginWithCredentials(data["password"], data.get("username"), data.get("email"))
     except WrongSignInCredentialsError as e:
         return jsonify({"error": str(e)}), 401
     
@@ -86,7 +86,7 @@ def register():
             profilePicture += ".png"
     
     try:
-        access_token, expires_in, refresh_token = UserManagment.getInstance().registerNewUser(data["email"], data["username"], data["password"], profilePicture)
+        access_token, expires_in, refresh_token = user_manager.registerNewUser(data["email"], data["username"], data["password"], profilePicture)
     except (EmailInvalidError, PasswordTooShortError, UsernameTooShortError, UsernameTooLongError, UserProfilePictureNotFoundError) as e:
         return jsonify({"error": str(e)}), 400
     except EmailAlreadyInUseError as e:
@@ -112,7 +112,7 @@ def delete():
         return jsonify({"error": "The provided data doesn't contain the a password."}), 400
     
     try:
-        UserManagment.getInstance().deleteAccount(token, data["password"])
+        user_manager.deleteAccount(token, data["password"])
     except WrongSignInCredentialsError as e:
         return jsonify({"error": str(e)}), 401
 

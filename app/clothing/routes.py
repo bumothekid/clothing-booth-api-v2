@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.utils.clothing_managment import ClothingManager
+from app.utils.clothing_managment import clothing_manager
 from app.utils.limiter import limiter
 from app.utils.authentication_managment import authorize_request
 
@@ -26,7 +26,7 @@ def create_clothing_piece():
     tags = data.get("tags", [])
     image_url = data.get("image_url", None)
 
-    clothing = ClothingManager.getInstance().create_clothing(token, name, category, image_url.split("/")[-1] if image_url.endswith(".webp") else image_url.split("/")[-1] + ".webp", color, seasons, tags, description)
+    clothing = clothing_manager.create_clothing(token, name, category, image_url.split("/")[-1] if image_url.endswith(".webp") else image_url.split("/")[-1] + ".webp", color, seasons, tags, description)
 
     return jsonify(clothing.to_dict()), 201
 
@@ -35,7 +35,7 @@ def create_clothing_piece():
 @authorize_request
 def get_clothing_piece(clothing_id: str):
     token = request.headers["Authorization"]
-    clothing = ClothingManager.getInstance().get_clothing_by_id(token, clothing_id)
+    clothing = clothing_manager.get_clothing_by_id(token, clothing_id)
     return jsonify(clothing.to_dict()), 200
 
 @clothing.route('/list/<user_id>', methods=['GET'])
@@ -46,7 +46,7 @@ def get_clothing_list(user_id: str):
     limit = request.args.get("limit", None)
     offset = request.args.get("offset", None)
 
-    clothing_list = ClothingManager.getInstance().get_list_of_clothing_by_user_id(token, user_id, limit, offset)
+    clothing_list = clothing_manager.get_list_of_clothing_by_user_id(token, user_id, limit, offset)
 
     return jsonify({"limit": limit, "offset": offset, "clothing": [clothing.to_dict() for clothing in clothing_list]}), 200
 
@@ -56,7 +56,7 @@ def get_clothing_list(user_id: str):
 def delete_clothing_piece(clothing_id: str):
     token = request.headers["Authorization"]
     
-    ClothingManager.getInstance().delete_clothing_by_id(token, clothing_id)
+    clothing_manager.delete_clothing_by_id(token, clothing_id)
 
     return "", 204
 
@@ -123,7 +123,7 @@ def updateClothing(clothingID: str):
         tagsList = [tag.capitalize() for tag in tags]
     
     try:
-        clothing = ClothingManager.getInstance().updateClothing(token, clothingID, name, category, description, color, seasonsList, tagsList, image_url)
+        clothing = clothing_manager.updateClothing(token, clothingID, name, category, description, color, seasonsList, tagsList, image_url)
     except ClothingNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     except (ClothingNameTooShortError, ClothingNameTooLongError, ClothingDescriptionTooLongError) as e:
