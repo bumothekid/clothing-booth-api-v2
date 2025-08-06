@@ -3,10 +3,8 @@ from app.utils.exceptions import EmailInvalidError, PasswordTooShortError, Usern
 from app.utils.authentication_managment import AuthenticationManager,  authorize_request
 from app.utils.user_managment import UserManagment
 from app.utils.limiter import limiter
-from app.utils.logging import Logger
 
 auth = Blueprint("auth", __name__)
-logger = Logger.getLogger()
 
 
 @auth.route('/guest', methods=['POST'])
