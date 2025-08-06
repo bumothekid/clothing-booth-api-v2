@@ -117,7 +117,7 @@ class ClothingManager:
         user_id = authentication_manager.get_user_id_from_token(token)
         clothing_id = str(uuid.uuid4())
 
-        clothing = Clothing(clothing_id, True, name, ClothingCategory[category], color, seasons, tags, datetime.now(), user_id, image_filename, description)
+        clothing = Clothing(clothing_id, True, name, ClothingCategory[category], color, datetime.now(), user_id, image_filename, seasons, tags, description)
 
         try:
             with Database.getConnection() as conn:
@@ -164,8 +164,8 @@ class ClothingManager:
                 cursor.execute("SELECT tag FROM clothing_tags WHERE clothing_id = %s;", (clothing_id,))
                 tags = cursor.fetchall()
                 
-                clothing = Clothing(clothing[0], clothing[1], clothing[2], ClothingCategory[clothing[3]], clothing[4], [ClothingSeason[season[0]] for season in seasons],
-                        [ClothingTags[tag[0]] for tag in tags], clothing[5], datetime.fromisoformat(clothing[6]), clothing[7], clothing[8], clothing[9])
+                clothing = Clothing(clothing[0], clothing[1], clothing[2], ClothingCategory[clothing[3]], clothing[4], clothing[5], datetime.fromisoformat(clothing[6]), clothing[7], clothing[8], [ClothingSeason[season[0]] for season in seasons],
+                        [ClothingTags[tag[0]] for tag in tags], clothing[9])
         
         except ClothingNotFoundError as e:
             raise e
@@ -203,9 +203,9 @@ class ClothingManager:
                 
                     cursor.execute("SELECT tag FROM clothing_tags WHERE clothing_id = %s;", (clothing_id,))
                     tags = cursor.fetchall()
-                
-                    clothes_list.append(Clothing(clothing[0], clothing[1], clothing[2], ClothingCategory[clothing[3]], clothing[4], [ClothingSeason[season[0]] for season in seasons],
-                        [ClothingTags[tag[0]] for tag in tags], clothing[5], clothing[6], clothing[7], clothing[8]))
+
+                    clothes_list.append(Clothing(clothing[0], clothing[1], clothing[2], ClothingCategory[clothing[3]], clothing[4], clothing[5], datetime.fromisoformat(clothing[6]), clothing[7], clothing[8], [ClothingSeason[season[0]] for season in seasons],
+                        [ClothingTags[tag[0]] for tag in tags], clothing[9]))
         except Exception as e:
             logger.error(f"An unexpected error occurred while retrieving clothes for user {user_id}: {e}")
             logger.error(f"{traceback.format_exc()}")

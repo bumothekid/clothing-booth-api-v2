@@ -55,11 +55,11 @@ class Clothing:
     name: str
     category: ClothingCategory
     color: str
-    seasons: list[ClothingSeason]
-    tags: list[ClothingTags]
     createdAt: datetime
     user_id: str
     image: str
+    seasons: Optional[list[ClothingSeason]] = None
+    tags: Optional[list[ClothingTags]] = None
     description: Optional[str] = None
         
     def to_dict(self) -> dict:
