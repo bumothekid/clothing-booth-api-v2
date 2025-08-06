@@ -4,6 +4,10 @@ class OutfitIDMissingError(OutfitValidationError):
     def __init__(self, message="Outfit ID is missing"):
         super().__init__(message)
 
+class OutfitClothingIDsMissingError(OutfitValidationError):
+    def __init__(self, message="Outfit clothing ID(s) are missing"):
+        super().__init__(message)
+
 class OutfitNameMissingError(OutfitValidationError):
     def __init__(self, message="Outfit name is missing"):
         super().__init__(message)

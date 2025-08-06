@@ -24,6 +24,7 @@ from app.utils.exceptions.clothing import (
 )
 from app.utils.exceptions.outfits import (
     OutfitIDMissingError,
+    OutfitClothingIDsMissingError,
     OutfitNameMissingError,
     OutfitNameTooShortError,
     OutfitNameTooLongError,
@@ -54,6 +55,7 @@ __all__ = [
     "OutfitValidationError",
     "OutfitNotFoundError",
     "OutfitIDMissingError",
+    "OutfitClothingIDsMissingError",
     "OutfitNameMissingError",
     "OutfitNameTooShortError",
     "OutfitNameTooLongError",
