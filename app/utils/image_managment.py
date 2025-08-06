@@ -1,3 +1,5 @@
+__all__ = ["image_manager"]
+
 import traceback
 import uuid
 import os
@@ -12,18 +14,6 @@ from app.utils.logging import get_logger
 logger = get_logger()
 
 class ImageManager:
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(ImageManager, cls).__new__(cls)
-        return cls._instance
-    
-    @classmethod
-    def getInstance(cls):
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
 
     def remove_background(self, file: Optional[FileStorage]) -> tuple[str, str]:
         if not isinstance(file, FileStorage):
@@ -92,3 +82,5 @@ class ImageManager:
             raise e
             
     # ! DELETION of old temp images
+    
+image_manager = ImageManager()

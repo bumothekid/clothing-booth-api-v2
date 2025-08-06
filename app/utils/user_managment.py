@@ -1,9 +1,11 @@
+__all__ = ["user_manager"]
+
 import random
 import traceback
 import uuid
 import os
 from app.utils.database import Database
-from app.utils.exceptions import EmailAlreadyInUseError, UnsupportedFileTypeError, UserNotFoundError, UserProfilePictureNotFoundError, UsernameAlreadyInUseError, UsernameTooShortError, UsernameTooLongError, EmailInvalidError, PasswordTooShortError, WrongSignInCredentialsError
+from app.utils.exceptions import UnsupportedFileTypeError #EmailAlreadyInUseError, UnsupportedFileTypeError, UserNotFoundError, UserProfilePictureNotFoundError, UsernameAlreadyInUseError, UsernameTooShortError, UsernameTooLongError, EmailInvalidError, PasswordTooShortError, WrongSignInCredentialsError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from app.utils.authentication_managment import AuthenticationManager
@@ -16,23 +18,10 @@ import re
 from app.utils.logging import get_logger
 
 logger = get_logger()
-        
-class UserManagment:
-    _instance = None
-    
-    def __new__(cls):
-            if cls._instance is None:
-                cls._instance = super(UserManagment, cls).__new__(cls)
-                cls._instance._checkTable()
-            return cls._instance
-        
-    @classmethod
-    def getInstance(cls):
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-    
-    def _checkTable(self) -> None:
+
+class UserManager:
+
+    def ensure_table_exists(self) -> None:
         with Database.getConnection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -327,3 +316,5 @@ class UserManagment:
                 return profilePicture
         
         return f"/public/profile_pictures/{userID}.webp"
+
+user_manager = UserManager()

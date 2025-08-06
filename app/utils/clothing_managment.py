@@ -1,3 +1,5 @@
+__all__ = ["clothing_manager"]
+
 import traceback
 import uuid
 from re import match as re_match
@@ -15,21 +17,8 @@ import os
 logger = get_logger()
 
 class ClothingManager:
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(ClothingManager, cls).__new__(cls)
-            cls._instance._checkTable()
-        return cls._instance
-    
-    @classmethod
-    def getInstance(cls):
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-    
-    def _checkTable(self) -> None:
+
+    def ensure_table_exists(self) -> None:
         with Database.getConnection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -315,3 +304,5 @@ class ClothingManager:
             logger.error(f"An unexpected error occurred while deleting clothing by ID: {e}")
             logger.error(traceback.format_exc())
             raise e
+            
+clothing_manager = ClothingManager()

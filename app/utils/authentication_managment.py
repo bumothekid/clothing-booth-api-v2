@@ -1,3 +1,5 @@
+__all__ = ["authentication_manager", "authorize_request"]
+
 import random
 import base64
 import jwt
@@ -24,7 +26,7 @@ def authorize_request(f):
             return jsonify({"error": "No token provided"}), 401
         
         token = request.headers["Authorization"]
-        if not AuthenticationManager.getInstance()._verify_access_token(token):
+        if not authentication_manager._verify_access_token(token):
             return jsonify({"message": "Unauthorized access"}), 403
         
         return f(*args, **kwargs)
@@ -32,21 +34,8 @@ def authorize_request(f):
     return wrapper
 
 class AuthenticationManager:
-    _instance = None
     
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(AuthenticationManager, cls).__new__(cls)
-            cls._instance._checkTable()
-        return cls._instance
-    
-    @classmethod
-    def getInstance(cls):
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-    
-    def _checkTable(self) -> None:
+    def ensure_table_exists(self) -> None:
         with Database.getConnection() as conn:
             cursor = conn.cursor()
             cursor.execute("""CREATE TABLE IF NOT EXISTS refresh_tokens(
@@ -192,3 +181,5 @@ class AuthenticationManager:
             'is_guest': is_guest
         }
         return jwt.encode(payload, SECRET_TOKEN_KEY, algorithm='HS256')
+
+authentication_manager = AuthenticationManager()
