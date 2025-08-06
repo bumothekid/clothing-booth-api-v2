@@ -24,11 +24,11 @@ class Outfit:
     outfit_id: str
     is_public: bool
     name: str
-    seasons: Optional[list[OutfitSeason]] = None
-    tags: Optional[list[OutfitTags]] = None
     createdAt: datetime
     user_id: str
     clothing_ids: list[str]
+    seasons: Optional[list[OutfitSeason]] = None
+    tags: Optional[list[OutfitTags]] = None
     description: Optional[str] = None
         
     def to_dict(self) -> dict:

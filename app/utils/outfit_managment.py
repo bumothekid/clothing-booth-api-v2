@@ -1,37 +1,20 @@
+__all__ = ["outfit_manager"]
+
 import traceback
 import uuid
 from datetime import datetime
 from app.utils.database import Database
 from app.utils.exceptions import OutfitNotFoundError, OutfitNameTooShortError, OutfitNameTooLongError, OutfitDescriptionTooLongError, OutfitNameMissingError, OutfitClothingIDsMissingError, OutfitClothingIDInvalidError, OutfitSeasonsInvalidError, OutfitTagsInvalidError, OutfitIDMissingError, OutfitPermissionError, OutfitLimitInvalidError, OutfitOffsetInvalidError, OutfitValidationError
-from werkzeug.datastructures import FileStorage
-from PIL import Image
 from typing import Optional
 from mysql.connector.errors import IntegrityError
-from backgroundremover.bg import remove
 from app.models.outfit import Outfit, OutfitTags, OutfitSeason
 from app.utils.authentication_managment import AuthenticationManager
 from app.utils.logging import get_logger
-from app.utils.image_managment import ImageManager
-import os
 
 logger = get_logger()
 
 class OutfitManager:
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(OutfitManager, cls).__new__(cls)
-            cls._instance._checkTable()
-        return cls._instance
-    
-    @classmethod
-    def getInstance(cls):
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-    
-    def _checkTable(self) -> None:
+    def ensure_table_exists(self) -> None:
         with Database.getConnection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -70,7 +53,7 @@ class OutfitManager:
                             """)
             conn.commit()
 
-    def create_outfit(self, token: str, name: str, clothing_ids: list[str], seasons: Optional[list[str]], tags: Optional[list[str]], description: Optional[str] = None) -> Outfit:
+    def create_outfit(self, token: str, name: str, clothing_ids: Optional[list[str]], seasons: Optional[list[str]], tags: Optional[list[str]], description: Optional[str] = None) -> Outfit:
         if not isinstance(name, str) or not name.strip():
             raise OutfitNameMissingError("The provided name is missing or invalid.")
         
@@ -119,7 +102,7 @@ class OutfitManager:
 
             valid_clothing_ids.append(clothing_id)
 
-        outfit = Outfit(outfit_id, True, name, seasons, tags, datetime.now(), user_id, valid_clothing_ids, description)
+        outfit = Outfit(outfit_id, True, name, datetime.now(), user_id, valid_clothing_ids, seasons, tags, description)
 
         try:
             with Database.getConnection() as conn:
@@ -166,8 +149,8 @@ class OutfitManager:
                     
                 cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit_id,))
                 clothing_list = cursor.fetchall()
-                
-                outfit = Outfit(outfit[0], outfit[1], outfit[2], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags], outfit[3], outfit[4], [clothing_id[0] for clothing_id in clothing_list], outfit[5])
+
+                outfit = Outfit(outfit[0], outfit[1], outfit[2], outfit[3], outfit[4], [clothing_id[0] for clothing_id in clothing_list], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags], outfit[5])
         except OutfitNotFoundError as e:
             raise e
         except OutfitPermissionError as e:
@@ -217,7 +200,7 @@ class OutfitManager:
                     cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit[0],))
                     clothing_list = cursor.fetchall()
                     
-                    outfit_instance = Outfit(outfit[0], outfit[1], outfit[2], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags], outfit[3], outfit[4], [clothing_id[0] for clothing_id in clothing_list], outfit[5])
+                    outfit_instance = Outfit(outfit[0], outfit[1], outfit[2], outfit[3], outfit[4], [clothing_id[0] for clothing_id in clothing_list], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags], outfit[5])
                     outfit_list.append(outfit_instance)
         except Exception as e:
             logger.error(f"An unexpected error occurred while retrieving outfits for user {user_id}: {e}")
@@ -265,7 +248,7 @@ class OutfitManager:
 
                 if fields:
                     cursor.execute(f"UPDATE outfit SET {', '.join(fields)} WHERE outfit_id = %s;", (*values, outfit_id))
-                    
+
                 cursor.execute("SELECT season FROM outfit_seasons WHERE outfit_id = %s;", (outfit_id,))
                 existing_seasons: list[str] = [season[0] for season in cursor.fetchall()]
 
@@ -275,18 +258,13 @@ class OutfitManager:
                     
                     if old_seasons:
                         cursor.execute("DELETE FROM outfit_seasons WHERE outfit_id = %s AND season IN %s;", (outfit_id, tuple(old_seasons)))
-                        
+
                     if new_seasons:
                         for season in new_seasons:
-                            if season not in OutfitSeason.__members__:
+                            if season.strip().upper() not in OutfitSeason.__members__:
                                 raise OutfitSeasonsInvalidError(f"The provided season ({season}) is not valid.")
-                            
-                            cursor.execute("INSERT INTO outfit_seasons(outfit_id, season) VALUES (%s, %s);", (outfit_id, season))
-                    for season in seasons:
-                        if season.strip().upper() not in OutfitSeason.__members__:
-                            raise OutfitSeasonsInvalidError(f"The provided season ({season}) is not valid.")
-                        
-                        cursor.execute("INSERT INTO outfit_seasons(outfit_id, season) VALUES (%s, %s);", (outfit_id, season.strip().upper()))
+
+                            cursor.execute("INSERT INTO outfit_seasons(outfit_id, season) VALUES (%s, %s);", (outfit_id, season.strip().upper()))
 
                 cursor.execute("SELECT tag FROM outfit_tags WHERE outfit_id = %s;", (outfit_id,))
                 existing_tags: list[str] = [tag[0] for tag in cursor.fetchall()]
@@ -297,14 +275,14 @@ class OutfitManager:
                     
                     if old_tags:
                         cursor.execute("DELETE FROM outfit_tags WHERE outfit_id = %s AND tag IN %s;", (outfit_id, tuple(old_tags)))
-                    
+
                     if new_tags:
                         for tag in new_tags:
                             if tag.strip().upper() not in OutfitTags.__members__:
                                 raise OutfitTagsInvalidError(f"The provided tag ({tag}) is not valid.")
 
                             cursor.execute("INSERT INTO outfit_tags(outfit_id, tag) VALUES (%s, %s);", (outfit_id, tag.strip().upper()))
-                            
+
                 cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit_id,))
                 existing_clothing_ids: list[str] = [clothing_id[0] for clothing_id in cursor.fetchall()]
 
@@ -318,6 +296,7 @@ class OutfitManager:
                     if new_clothing_ids:
                         for clothing_id in new_clothing_ids:
                             cursor.execute("INSERT INTO outfit_clothing(outfit_id, clothing_id) VALUES (%s, %s);", (outfit_id, clothing_id))
+                            
                 conn.commit()
         except (OutfitValidationError) as e:
             raise e
@@ -356,3 +335,7 @@ class OutfitManager:
             logger.error(f"An unexpected error occurred while deleting outfit with ID {outfit_id}: {e}")
             logger.error(traceback.format_exc())
             raise e
+        return None
+    
+    
+outfit_manager = OutfitManager()
