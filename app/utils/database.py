@@ -2,7 +2,7 @@ from mysql.connector import pooling, MySQLConnection
 from dotenv import load_dotenv
 from os import getenv
 
-class Database():
+class Database:
     _pool: pooling.MySQLConnectionPool = None
     
     @classmethod

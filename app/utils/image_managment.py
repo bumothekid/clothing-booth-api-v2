@@ -7,9 +7,9 @@ from werkzeug.datastructures import FileStorage
 from PIL import Image
 from io import BytesIO
 from backgroundremover import bg
-from app.utils.logging import Logger
+from app.utils.logging import get_logger
 
-logger = Logger.getLogger()
+logger = get_logger()
 
 class ImageManager:
     _instance = None

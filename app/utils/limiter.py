@@ -2,10 +2,10 @@ from time import time, sleep
 from flask import jsonify, make_response
 from flask_limiter import Limiter, RequestLimit
 from flask_limiter.util import get_remote_address
-from .logging import Logger
+from app.utils.logging import get_logger
 from redis import Redis, RedisError
 
-logger = Logger.getLogger()
+logger = get_logger()
 
 def rateLimitResponse(rateLimit: RequestLimit):
     reset_in_seconds = rateLimit.reset_at - time()

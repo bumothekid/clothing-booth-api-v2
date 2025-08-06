@@ -1,7 +1,7 @@
 import os
 from flask import Flask, jsonify
 from app.utils.limiter import limiter
-from app.utils.logging import Logger
+from app.utils.logging import get_logger
 from app.utils.exceptions import (
     ValidationError,
     NotFoundError,
@@ -21,7 +21,7 @@ from app.outfit.routes import outfit
 
 api = Flask("Clothing Booth API")
 
-logger = Logger.getLogger()
+logger = get_logger()
 
 limiter.init_app(api)
 api.register_blueprint(main)

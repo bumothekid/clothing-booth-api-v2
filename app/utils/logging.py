@@ -1,6 +1,7 @@
+__all__ = ["get_logger"]
+
 import logging
 import time
-import os
 from logging.handlers import RotatingFileHandler
 
 # ! stream_handler is used to print logs to console
@@ -19,24 +20,28 @@ class CustomFormatter(logging.Formatter):
         record.asctime = self.formatTime(record, self.datefmt)
         return f"[{record.asctime}] [{record.process}] [{record.levelname}] {record.getMessage()}"
 
-class Logger():
+class Logger:
     _logger: logging.Logger = None
 
     @classmethod
-    def getLogger(cls) -> logging.Logger:
+    def get_logger(cls) -> logging.Logger:
         if cls._logger is None:
-            
-            cls._logger = logging.getLogger()
+            cls._logger = logging.getLogger("api_logger")
             cls._logger.setLevel(logging.INFO)
             
-            log_filename = f"logs/app.log"
-            file_handler = RotatingFileHandler(log_filename, maxBytes=1024*1024, backupCount=5)
-            stream_handler = logging.StreamHandler()
-            
-            formatter = CustomFormatter()
-            file_handler.setFormatter(formatter)
-            stream_handler.setFormatter(formatter)
-            
-            cls._logger.addHandler(file_handler)
-            cls._logger.addHandler(stream_handler)
+            if not cls._logger.hasHandlers():
+                log_filename = f"logs/app.log"
+                file_handler = RotatingFileHandler(log_filename, maxBytes=1024*1024, backupCount=5)
+                stream_handler = logging.StreamHandler()
+                
+                formatter = CustomFormatter()
+                file_handler.setFormatter(formatter)
+                stream_handler.setFormatter(formatter)
+                
+                cls._logger.addHandler(file_handler)
+                cls._logger.addHandler(stream_handler)
+                
         return cls._logger
+
+def get_logger() -> logging.Logger:
+    return Logger.get_logger()

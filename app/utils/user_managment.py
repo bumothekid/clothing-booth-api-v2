@@ -13,9 +13,9 @@ from PIL import Image
 from os import path, remove
 from app.models.user import PrivateUser, PublicUser
 import re
-from app.utils.logging import Logger
+from app.utils.logging import get_logger
 
-logger = Logger.getLogger()
+logger = get_logger()
         
 class UserManagment:
     _instance = None

@@ -8,11 +8,11 @@ from typing import Optional
 from mysql.connector.errors import IntegrityError
 from app.models.clothing import Clothing, ClothingCategory, ClothingSeason, ClothingTags
 from app.utils.authentication_managment import AuthenticationManager
-from app.utils.logging import Logger
+from app.utils.logging import get_logger
 from app.utils.image_managment import ImageManager
 import os
 
-logger = Logger.getLogger()
+logger = get_logger()
 
 class ClothingManager:
     _instance = None

@@ -9,14 +9,14 @@ from datetime import datetime, timedelta
 from flask import request, jsonify
 from app.utils.database import Database
 from app.utils.exceptions import AuthValidationError, AuthTokenExpiredError, AuthAccessTokenInvalidError, AuthRefreshTokenInvalidError, AuthAccessTokenMissingError, AuthRefreshTokenMissingError, AuthUserIDMissingError
-from app.utils.logging import Logger
+from app.utils.logging import get_logger
 
 SECRET_TOKEN_KEY = getenv("SECRET_TOKEN_KEY")
 ACCESS_TOKEN_EXPIRY_HOURS = 1
 REFRESH_TOKEN_EXPIRY_DAYS = 90
 TOKEN_LENGTH = 16
 
-logger = Logger.getLogger()
+logger = get_logger()
 
 def authorize_request(f):
     def wrapper(*args, **kwargs):

@@ -1,12 +1,12 @@
 from flask import Blueprint, jsonify, send_from_directory
 from app.utils.limiter import limiter
-from app.utils.logging import Logger
+from app.utils.logging import get_logger
 from werkzeug.exceptions import NotFound
 from app.utils.user_managment import UserManagment
 from app.utils.exceptions import UserNotFoundError
 
 uploads = Blueprint("uploads", __name__)
-logger = Logger.getLogger()
+logger = get_logger()
 
 @uploads.route('/profile_pictures/default/<filename>.png', methods=['GET'])
 @uploads.route('/profile_pictures/<user_id>.webp', methods=['GET'])
