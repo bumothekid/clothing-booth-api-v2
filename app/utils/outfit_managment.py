@@ -8,7 +8,7 @@ from app.utils.exceptions import OutfitNotFoundError, OutfitNameTooShortError, O
 from typing import Optional
 from mysql.connector.errors import IntegrityError
 from app.models.outfit import Outfit, OutfitTags, OutfitSeason
-from app.utils.authentication_managment import AuthenticationManager
+from app.utils.authentication_managment import authentication_manager
 from app.utils.logging import get_logger
 
 logger = get_logger()
@@ -89,7 +89,7 @@ class OutfitManager:
         if isinstance(description, str) and len(description) > 255:
             raise OutfitDescriptionTooLongError("The provided description is too long, it has to be at most 255 characters long.")
 
-        user_id = AuthenticationManager.getInstance().get_user_id_from_token(token)
+        user_id = authentication_manager.get_user_id_from_token(token)
         outfit_id = str(uuid.uuid4())
         
         valid_clothing_ids = []
@@ -126,7 +126,7 @@ class OutfitManager:
         if not isinstance(outfit_id, str) or not outfit_id.strip():
             raise OutfitIDMissingError("The provided outfit ID is missing or invalid.")
         
-        user_id = AuthenticationManager.getInstance().get_user_id_from_token(token)
+        user_id = authentication_manager.get_user_id_from_token(token)
         
         try:
             with Database.getConnection() as conn:
@@ -172,7 +172,7 @@ class OutfitManager:
         if not isinstance(offset, int) or offset < 0:
             raise OutfitOffsetInvalidError("The offset must be a positive integer.")
 
-        user_id_from_token = AuthenticationManager.getInstance().get_user_id_from_token(token)
+        user_id_from_token = authentication_manager.get_user_id_from_token(token)
         
         outfit_list: list[Outfit] = []
 
@@ -210,7 +210,7 @@ class OutfitManager:
         return outfit_list
         
     def update_outfit(self, token: str, outfit_id: str, name: Optional[str] = None, is_public: Optional[bool] = None, seasons: Optional[list[str]] = None, tags: Optional[list[str]] = None, clothing_ids: Optional[list[str]] = None, description: Optional[str] = None) -> Outfit:
-        user_id = AuthenticationManager.getInstance().get_user_id_from_token(token)
+        user_id = authentication_manager.get_user_id_from_token(token)
         
         fields = []
         values = []
@@ -313,7 +313,7 @@ class OutfitManager:
         if not isinstance(outfit_id, str) or not outfit_id.strip():
             raise OutfitIDMissingError("The provided outfit ID is missing or invalid.")
         
-        user_id = AuthenticationManager.getInstance().get_user_id_from_token(token)
+        user_id = authentication_manager.get_user_id_from_token(token)
 
         try:
             with Database.getConnection() as conn:

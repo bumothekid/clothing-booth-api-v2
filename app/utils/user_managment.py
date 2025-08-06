@@ -8,7 +8,7 @@ from app.utils.database import Database
 from app.utils.exceptions import UnsupportedFileTypeError #EmailAlreadyInUseError, UnsupportedFileTypeError, UserNotFoundError, UserProfilePictureNotFoundError, UsernameAlreadyInUseError, UsernameTooShortError, UsernameTooLongError, EmailInvalidError, PasswordTooShortError, WrongSignInCredentialsError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from app.utils.authentication_managment import AuthenticationManager
+from app.utils.authentication_managment import authentication_manager
 from werkzeug.datastructures import FileStorage
 from mysql.connector.errors import IntegrityError
 from PIL import Image
@@ -77,13 +77,13 @@ class UserManager:
             logger.error(traceback.format_exc())
             raise e
         
-        return AuthenticationManager.getInstance().generate_token_pair(userID)
+        return authentication_manager.generate_token_pair(userID)
 
     def register_guest(self) -> tuple:
         try:
             user_id = self._create_user()
 
-            return AuthenticationManager.getInstance().generate_token_pair(user_id, is_guest=True)
+            return authentication_manager.generate_token_pair(user_id, is_guest=True)
         except Exception as e:
             logger.error(f"An unexpected error occurred while registering guest: {e}")
             raise
@@ -131,7 +131,7 @@ class UserManager:
                 cursor.execute("INSERT INTO users(user_id, email, username, password, profile_picture) VALUES (%s, %s,  %s, %s, %s);", (userID, email, username, hashedPassword, "/public/profile_pictures/default/" + profilePicture))
                 conn.commit()
                 
-                return AuthenticationManager.getInstance().generate_token_pair(userID)
+                return authentication_manager.generate_token_pair(userID)
         except IntegrityError as e:
             if "email" in e.msg:
                 raise EmailAlreadyInUseError("The provided 'email' is already in use.")
@@ -146,7 +146,7 @@ class UserManager:
         
     def deleteAccount(self, token: str, password: str) -> None:
         try:
-            userID = AuthenticationManager.getInstance().retrieveUserIDByToken(token)
+            userID = authentication_manager.retrieveUserIDByToken(token)
             
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
@@ -177,7 +177,7 @@ class UserManager:
             if len(username) > 32:
                 raise UsernameTooLongError("The provided username is too long.")
             
-            userID = AuthenticationManager.getInstance().retrieveUserIDByToken(token)
+            userID = authentication_manager.retrieveUserIDByToken(token)
             
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
@@ -199,7 +199,7 @@ class UserManager:
         
     def getMyUser(self, token: str) -> PrivateUser:
         try:
-            userID = AuthenticationManager.getInstance().retrieveUserIDByToken(token)
+            userID = authentication_manager.retrieveUserIDByToken(token)
             
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
@@ -250,7 +250,7 @@ class UserManager:
         if fileExtension not in ["jpg", "jpeg", "png"]:
             raise UnsupportedFileTypeError("The provided file type is not supported.")
         
-        userID = AuthenticationManager.getInstance().retrieveUserIDByToken(token)
+        userID = authentication_manager.retrieveUserIDByToken(token)
         
         try:
             image = Image.open(file.stream)
@@ -269,7 +269,7 @@ class UserManager:
         return self.getMyUser(token)
     
     def setDefaultProfilePicture(self, profilePicture: str, token: str) -> PrivateUser:
-        userID = AuthenticationManager.getInstance().retrieveUserIDByToken(token)
+        userID = authentication_manager.retrieveUserIDByToken(token)
         
         if profilePicture not in os.listdir("app/static/profile_pictures/default/"):
             raise UserProfilePictureNotFoundError("The provided profile picture is available. Please choose one of the following: " + ", ".join(os.listdir("app/static/profile_pictures/default/")))
@@ -283,7 +283,7 @@ class UserManager:
     
     def removeProfilePicture(self, token: str) -> None:
         try:
-            userID = AuthenticationManager.getInstance().retrieveUserIDByToken(token)
+            userID = authentication_manager.retrieveUserIDByToken(token)
             
             if not path.exists(f"app/static/profile_pictures/{userID}.webp"):
                 raise UserProfilePictureNotFoundError("The user profile picture is not set.")
@@ -305,7 +305,7 @@ class UserManager:
             raise e
     
     def getMyProfilePicture(self, token: str) -> str:
-        userID = AuthenticationManager.getInstance().retrieveUserIDByToken(token)
+        userID = authentication_manager.retrieveUserIDByToken(token)
         
         if not path.exists(f"app/static/profile_pictures/{userID}.webp"):
             with Database.getConnection() as conn:

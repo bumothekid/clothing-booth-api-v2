@@ -9,9 +9,9 @@ from app.utils.exceptions import ClothingNotFoundError, ClothingImageInvalidErro
 from typing import Optional
 from mysql.connector.errors import IntegrityError
 from app.models.clothing import Clothing, ClothingCategory, ClothingSeason, ClothingTags
-from app.utils.authentication_managment import AuthenticationManager
+from app.utils.authentication_managment import authentication_manager
 from app.utils.logging import get_logger
-from app.utils.image_managment import ImageManager
+from app.utils.image_managment import image_manager
 import os
 
 logger = get_logger()
@@ -114,7 +114,7 @@ class ClothingManager:
         
             tags = [ClothingTags[tag.upper()] for tag in tags]
 
-        user_id = AuthenticationManager.getInstance().get_user_id_from_token(token)
+        user_id = authentication_manager.get_user_id_from_token(token)
         clothing_id = str(uuid.uuid4())
 
         clothing = Clothing(clothing_id, True, name, ClothingCategory[category], color, seasons, tags, datetime.now(), user_id, image_filename, description)
@@ -129,7 +129,7 @@ class ClothingManager:
                     cursor.execute("INSERT INTO clothing_tags(clothing_id, tag) VALUES (%s, %s);", (clothing.clothing_id, tag.name))
                 conn.commit()
 
-                ImageManager.getInstance().move_preview_image_to_permanent(image_filename)
+                image_manager.move_preview_image_to_permanent(image_filename)
         except IntegrityError as e:
             raise ClothingImageInvalidError("The provided image is already used by another clothing.")
         except Exception as e:
@@ -143,7 +143,7 @@ class ClothingManager:
         if not isinstance(clothing_id, str) or not clothing_id.strip():
             raise ClothingIDMissingError("The clothing ID is missing.")
 
-        user_id = AuthenticationManager.getInstance().get_user_id_from_token(token)
+        user_id = authentication_manager.get_user_id_from_token(token)
         
         try:
             with Database.getConnection() as conn:
@@ -180,7 +180,7 @@ class ClothingManager:
         if not isinstance(user_id, str) or not user_id.strip():
             raise ClothingIDMissingError("The provided user ID is missing or invalid.")
 
-        user_id_from_token = AuthenticationManager.getInstance().get_user_id_from_token(token)
+        user_id_from_token = authentication_manager.get_user_id_from_token(token)
         clothes_list: list[Clothing] = []
 
         statement = f"SELECT clothing_id, is_public, name, category, color, created_at, user_id, image, description FROM clothing WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
@@ -216,7 +216,7 @@ class ClothingManager:
     """
     def updateClothing(self, token: str, clothingID: str, name: str | None, category: str | None, description: str | None, color: str | None, seasons: list | None, tags: list | None, image: str | None) -> Clothing:
         try:
-            userID = AuthenticationManager.getInstance().retrieveUserIDByToken(token)
+            userID = authentication_manager.retrieveUserIDByToken(token)
             
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
@@ -281,7 +281,7 @@ class ClothingManager:
         if not isinstance(clothing_id, str) or not clothing_id.strip():
             raise ClothingIDMissingError("The clothing ID is missing.")
         
-        user_id = AuthenticationManager.getInstance().get_user_id_from_token(token)
+        user_id = authentication_manager.get_user_id_from_token(token)
         
         try:    
             with Database.getConnection() as conn:
