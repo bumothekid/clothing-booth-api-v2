@@ -16,19 +16,16 @@ logger = get_logger()
 class ImageManager:
 
     def remove_background(self, file: Optional[FileStorage]) -> tuple[str, str]:
-        if not isinstance(file, FileStorage):
-            raise TypeError("Expected file to be an instance of FileStorage.")
+        if not isinstance(file, FileStorage) or not file.filename.endswith((".png", ".jpg", ".jpeg")):
+            raise UnsupportedFileTypeError("The file provided is not a supported image type. Supported types are PNG, JPG, and JPEG.")
+        
+        if len(file.read()) > 4*1024*1024:
+            raise FileTooLargeError("File is too large (max 4MB)")
+        
+        file.seek(0)
+        fileName = str(uuid.uuid4())
         
         try:
-            if not file.filename.endswith((".png", ".jpg", ".jpeg")):
-                raise UnsupportedFileTypeError("The file provided is not a supported image type. Supported types are PNG, JPG, and JPEG.")
-            
-            if len(file.read()) > 4*1024*1024:
-                raise FileTooLargeError("File is too large (max 4MB)")
-        
-            file.seek(0)
-            
-            fileName = str(uuid.uuid4())
             
             image = Image.open(file)
             image = image.convert("RGBA")
@@ -56,8 +53,6 @@ class ImageManager:
             new_image = Image.open(BytesIO(without_background))
             new_image.save("app/static/temp/" + fileName + ".webp", format="WEBP")
             return f"https://api.clothing-booth.com/uploads/temp/{fileName}.webp", fileName + ".webp"
-        except (UnsupportedFileTypeError, FileTooLargeError) as e:
-            raise e
         except Exception as e:
             logger.error(f"An unexpected error occured while removing the background of an image: {e}")
             logger.error(traceback.format_exc())
