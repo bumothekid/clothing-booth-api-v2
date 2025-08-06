@@ -14,10 +14,6 @@ def create_clothing_piece():
     if not data:
         return jsonify({"error": "No data provided"}), 400
     
-    missing_data = [field for field in ["name", "description", "category", "color", "seasons", "tags"] if field not in data]
-    if missing_data:
-        return jsonify({"error": f"The provided data doesn't contain the following fields: {', '.join(missing_data)}."}), 400
-    
     name = data.get("name", None)
     description = data.get("description", None)
     category = data.get("category", None)
@@ -45,6 +41,11 @@ def get_clothing_list(user_id: str):
     token = request.headers["Authorization"]
     limit = request.args.get("limit", None)
     offset = request.args.get("offset", None)
+
+    if limit is not None:
+        limit = 1000
+    if offset is not None:
+        offset = 0
 
     clothing_list = clothing_manager.get_list_of_clothing_by_user_id(token, user_id, limit, offset)
 
