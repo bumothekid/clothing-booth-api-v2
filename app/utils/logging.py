@@ -3,6 +3,7 @@ __all__ = ["get_logger"]
 import logging
 import time
 from logging.handlers import RotatingFileHandler
+from os import getenv
 
 # ! stream_handler is used to print logs to console
 # ! remove stream_handler to disable console logs (only file logs; useful for production)
@@ -26,9 +27,11 @@ class Logger:
     @classmethod
     def get_logger(cls) -> logging.Logger:
         if cls._logger is None:
-            cls._logger = logging.getLogger("api_logger")
-            cls._logger.setLevel(logging.INFO)
-            
+            cls._logger = logging.getLogger()
+            log_level = getenv("LOG_LEVEL", "DEBUG").upper()
+            level = getattr(logging, log_level, logging.DEBUG)
+            cls._logger.setLevel(level)
+
             if not cls._logger.hasHandlers():
                 log_filename = f"logs/app.log"
                 file_handler = RotatingFileHandler(log_filename, maxBytes=1024*1024, backupCount=5)
@@ -38,9 +41,12 @@ class Logger:
                 file_handler.setFormatter(formatter)
                 stream_handler.setFormatter(formatter)
                 
+                file_handler.setLevel(level)
+                stream_handler.setLevel(level)
+
                 cls._logger.addHandler(file_handler)
                 cls._logger.addHandler(stream_handler)
-                
+
         return cls._logger
 
 def get_logger() -> logging.Logger:
