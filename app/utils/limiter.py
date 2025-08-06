@@ -4,6 +4,7 @@ from flask_limiter import Limiter, RequestLimit
 from flask_limiter.util import get_remote_address
 from app.utils.logging import get_logger
 from redis import Redis, RedisError
+from os import getenv
 
 logger = get_logger()
 
@@ -25,7 +26,7 @@ def checkRedisConnection(limiter: Limiter):
             redis_client = Redis.from_url(limiter._storage_uri)
             redis_client.ping()
             redis_client.close()
-            logger.info("Successfully connected to Redis.")
+            logger.debug("Successfully connected to Redis.")
             return
         except RedisError as e:
             retries += 1
@@ -33,23 +34,24 @@ def checkRedisConnection(limiter: Limiter):
             if retries < max_retries:
                 sleep(retry_delay)
             else:
-                logger.error("Max retries reached. Unable to connect to Redis.")
+                logger.critical("Max retries reached. Unable to connect to Redis.")
                 raise e
 
 try:
     limiter = Limiter(
         key_func=get_remote_address,
-        storage_uri="redis://localhost:6379",
-        on_breach=rateLimitResponse
+        storage_uri=getenv("REDIS_URI", "redis://localhost:6379"),
+        on_breach=rateLimitResponse,
+        enabled=True if getenv("RATELIMITER_ENABLED", "True").lower() == "true" else False,
     )
     
     logger.debug(f"Rate limiter enabled: {limiter.enabled}")
     
     checkRedisConnection(limiter)
 except RedisError as e:
-    logger.error("Failed to connect to Redis")
+    logger.critical("Failed to connect to Redis")
     raise e
 except Exception as e:
-    logger.error("Failed to initialize rate limiter")
-    logger.error(e)
+    logger.critical("Failed to initialize rate limiter")
+    logger.critical(e)
     raise e
