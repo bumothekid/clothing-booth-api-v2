@@ -36,6 +36,21 @@ def delete_refresh_token():
 
     return "", 204
 
+@auth.route("/upgrade", methods=["POST"])
+@limiter.limit("5 per minute")
+@authorize_request
+def upgrade_guest():
+    token = request.headers["Authorization"]
+    data: dict = request.get_json()
+    
+    email = data.get("email", None)
+    username = data.get("username", None)
+    password = data.get("password", None)
+    profile_picture = data.get("profile_picture", None)
+    
+    user = user_manager.upgrade_guest_account(token, email, username, password, profile_picture)
+    
+    return jsonify(user.from_dict), 201
 
 """
 # upgrade account from guest to user
