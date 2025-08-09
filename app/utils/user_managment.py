@@ -39,7 +39,7 @@ class UserManager:
                            """)
             conn.commit()
 
-    def upgrade_guest_account(self, token: str, email: Optional[str], username: Optional[str], password: str, profile_picture: Optional[str]) -> None:
+    def upgrade_guest_account(self, token: str, email: Optional[str], username: Optional[str], password: str, profile_picture: Optional[str]) -> User:
         if not (isinstance(email, str) and email.strip()) and not (isinstance(username, str) and username.strip()):
             raise SignInNameMissingError("Either an email or username is required.")
 
@@ -68,8 +68,15 @@ class UserManager:
         
         try:
             with Database.getConnection() as conn:
-                cursor = conn.cursor()
+                cursor = conn.cursor(dictionary=True)
                 cursor.execute("UPDATE users SET is_guest = %s, email = %s, username = %s, password = %s, profile_picture = %s WHERE user_id = %s;", (False, email.lower(), username.lower(), hashed_password, profile_picture, user_id))
+                
+                cursor.execute("SELECT user_id, is_guest, username, email, created_at, updated_at, profile_picture FROM users WHERE user_id = %s;", (user_id, ))
+                db_user = cursor.fetchone()[0]
+                
+                user = User.from_dict(db_user)
+                
+                conn.commit()
         except IntegrityError as e:
             if "email" in e.msg:
                 raise EmailAlreadyInUseError("The provided email is already in use.")
@@ -82,6 +89,8 @@ class UserManager:
             logger.error(f"An unexpected error occurred while upgrading a guest account: {e}")
             logger.error(traceback.format_exc())
             raise e
+        
+        return user
         
     def delete_account(self, token: str, password: str) -> None:
         user_id = authentication_manager.get_user_id_from_token(token)
