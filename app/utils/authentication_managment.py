@@ -19,7 +19,7 @@ from app.utils.logging import get_logger
 SECRET_TOKEN_KEY = getenv("SECRET_TOKEN_KEY")
 ACCESS_TOKEN_EXPIRY_HOURS = 1
 REFRESH_TOKEN_EXPIRY_DAYS = 90
-TOKEN_LENGTH = 16
+REFRESH_TOKEN_LENGTH = 16
 
 logger = get_logger()
 
@@ -243,7 +243,7 @@ class AuthenticationManager:
             raise AuthAccessTokenInvalidError("The provided access token is invalid.")
 
     def _generate_refresh_token(self) -> str:
-        randRefreshToken = "".join(random.choices(ascii_letters + digits, k=TOKEN_LENGTH))
+        randRefreshToken = "".join(random.choices(ascii_letters + digits, k=REFRESH_TOKEN_LENGTH))
         randRefreshTokenb64 = base64.b64encode(randRefreshToken.encode()).decode()
         return f"{randRefreshTokenb64}"
 
