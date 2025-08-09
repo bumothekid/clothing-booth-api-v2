@@ -1,5 +1,4 @@
 import os
-import logging
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,7 +20,7 @@ from app.utils.outfit_managment import outfit_manager
 from app.main.routes import api as main
 from app.auth.routes import auth
 #from app.users.routes import users
-#from app.uploads.routes import uploads
+from app.uploads.routes import uploads
 from app.clothing.routes import clothing
 from app.images.routes import images
 from app.outfit.routes import outfit
@@ -67,7 +66,7 @@ def register_blueprints():
     api.register_blueprint(auth, url_prefix="/auth")
     #api.register_blueprint(users, url_prefix="/users")
     api.register_blueprint(clothing, url_prefix="/clothing")
-    #api.register_blueprint(uploads, url_prefix="/uploads")
+    api.register_blueprint(uploads, url_prefix="/uploads")
     api.register_blueprint(images, url_prefix="/images")
     api.register_blueprint(outfit, url_prefix="/outfit")
 
