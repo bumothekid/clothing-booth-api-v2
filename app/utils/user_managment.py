@@ -125,36 +125,41 @@ class UserManager:
             raise e
         
         return User.from_dict(db_user)
-    
-    def setUsername(self, username: str, token: str) -> tuple:
+        
+    def update_user_username(self, token: str, username: str) -> tuple:
+        user_id = authentication_manager.get_user_id_from_token(token)
+        
+        if not isinstance(username, str):
+            raise UsernameMissingError("Username is required.")
+        
+        username = username.lower().strip()
+        
+        if len(username) < 3:
+            raise UsernameTooShortError("The provided username is too short.")
+        
+        if len(username) > 32:
+            raise UsernameTooLongError("The provided username is too long.")
+            
         try:
-            username = username.lower().strip()
-            
-            if len(username) < 3:
-                raise UsernameTooShortError("The provided username is too short.")
-            
-            if len(username) > 32:
-                raise UsernameTooLongError("The provided username is too long.")
-            
-            userID = authentication_manager.retrieveUserIDByToken(token)
-            
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT username FROM users WHERE user_id = %s;", (userID, ))
-                oldUsername = cursor.fetchone()
-                cursor.execute("UPDATE users SET username = %s WHERE user_id = %s;", (username, userID, ))
-                conn.commit()
+                cursor.execute("SELECT username FROM users WHERE user_id = %s;", (user_id,))
+                db_old_username = cursor.fetchone()
                 
-            return username, oldUsername if oldUsername is None else oldUsername[0]
+                if db_old_username:
+                    db_old_username = db_old_username[0]
+                    
+                cursor.execute("UPDATE users SET username = %s WHERE user_id = %s;", (username, user_id,))
+                conn.commit()
         except IntegrityError as e:
             if "username" in e.msg:
-                raise UsernameAlreadyInUseError("The provided 'username' is already in use.")
+                raise UsernameAlreadyInUseError("The provided username is already in use.")
             raise Exception(e.msg)
         except Exception as e:
-            logger.error(f"An unexpected error occurred while setting the username: {e}")
+            logger.error(f"An unexpected error occurred while setting a new username: {e}")
             logger.error(traceback.format_exc())
             raise e
-        
+                
     def getUserProfilePicture(self, userID: str) -> str:
         if not path.exists(f"static/profile_pictures/{userID}.webp"):
             with Database.getConnection() as conn:
@@ -169,7 +174,7 @@ class UserManager:
         
         return f"/public/profile_pictures/{userID}.webp"
     
-    def setProfilePicture(self, file: FileStorage, token: str) -> PrivateUser:
+    def setProfilePicture(self, file: FileStorage, token: str) -> User:
         fileExtension = file.filename.split(".")[-1].lower()
         
         if fileExtension not in ["jpg", "jpeg", "png"]:
@@ -193,7 +198,7 @@ class UserManager:
         
         return self.getMyUser(token)
     
-    def setDefaultProfilePicture(self, profilePicture: str, token: str) -> PrivateUser:
+    def setDefaultProfilePicture(self, profilePicture: str, token: str) -> User:
         userID = authentication_manager.retrieveUserIDByToken(token)
         
         if profilePicture not in os.listdir("app/static/profile_pictures/default/"):
