@@ -127,10 +127,13 @@ class AuthenticationManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT password, user_id FROM users WHERE email = %s OR username = %s", (email, username))
+                cursor.execute("SELECT password, user_id, username FROM users WHERE email = %s OR username = %s", (email, username))
                 user = cursor.fetchone()
             
                 if not user:
+                    raise AuthCredentialsWrongError("The provided sign in credentials are wrong.")
+                
+                if email and username and user[2] != username:
                     raise AuthCredentialsWrongError("The provided sign in credentials are wrong.")
                 
                 try:
