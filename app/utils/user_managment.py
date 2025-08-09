@@ -6,7 +6,7 @@ import uuid
 import os
 from typing import Optional
 from app.utils.database import Database
-from app.utils.exceptions import UnsupportedFileTypeError, PasswordMissingError, SignInNameMissingError, EmailInvalidError, PasswordTooShortError, UsernameTooLongError, EmailMissingError, UsernameTooShortError, UsernameMissingError, ProfilePictureInvalidError, EmailAlreadyInUseError, UsernameAlreadyInUseError, AuthCredentialsWrongError
+from app.utils.exceptions import UnsupportedFileTypeError, PasswordMissingError, SignInNameMissingError, EmailInvalidError, PasswordTooShortError, UsernameTooLongError, EmailMissingError, UsernameTooShortError, UsernameMissingError, ProfilePictureInvalidError, EmailAlreadyInUseError, UsernameAlreadyInUseError, AuthCredentialsWrongError, UserNotFoundError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from app.utils.authentication_managment import authentication_manager
@@ -14,7 +14,7 @@ from werkzeug.datastructures import FileStorage
 from mysql.connector.errors import IntegrityError
 from PIL import Image
 from os import path, remove
-from app.models.user import PrivateUser, PublicUser
+from app.models.user import User
 import re
 from app.utils.logging import get_logger
 
@@ -102,6 +102,29 @@ class UserManager:
             logger.error(f"An unexpected error occurred while trying to delete a user: {e}")
             logger.error(traceback.format_exc())
             raise e
+        
+    def get_user_profile_by_id(self, token: str, user_id: str) -> User:
+        user_id_from_token = authentication_manager.get_user_id_from_token(token)
+        
+        query = "SELECT user_id, is_guest, created_at, NULL as updated_at, username, NULL as email, profile_picture FROM users WHERE user_id = %s;"
+        param = (user_id, )
+        if user_id_from_token == user_id:
+            query = "SELECT user_id, is_guest, created_at, updated_at, username, email, profile_picture FROM users WHERE user_id = %s;"
+            
+        try:
+            with Database.getConnection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(query, param)
+                db_user = cursor.fetchone()
+                
+                if not db_user:
+                    raise UserNotFoundError("The provided user_id is not associated with any user in the database.")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while getting user profile from database: {e}")
+            logger.error(traceback.format_exc())
+            raise e
+        
+        return User.from_dict(db_user)
     
     def setUsername(self, username: str, token: str) -> tuple:
         try:
@@ -129,39 +152,6 @@ class UserManager:
             raise Exception(e.msg)
         except Exception as e:
             logger.error(f"An unexpected error occurred while setting the username: {e}")
-            logger.error(traceback.format_exc())
-            raise e
-        
-    def getMyUser(self, token: str) -> PrivateUser:
-        try:
-            userID = authentication_manager.retrieveUserIDByToken(token)
-            
-            with Database.getConnection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT user_id, username, created_at, updated_at, email, profile_picture FROM users WHERE user_id = %s;", (userID, ))
-                user = cursor.fetchone()
-            
-            return PrivateUser(*user)
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while retrieving the user: {e}")
-            logger.error(traceback.format_exc())
-            raise e
-    
-    def getUserByUserID(self, userID: str) -> PublicUser:
-        try:
-            with Database.getConnection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT user_id, username, created_at FROM users WHERE user_id = %s;", (userID, ))
-                user = cursor.fetchone()
-            
-            if not user:
-                raise UserNotFoundError("The provided user_id is not associated with any users.")
-            
-            return PublicUser(*user)
-        except UserNotFoundError as e:
-            raise e
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while retrieving the user: {e}")
             logger.error(traceback.format_exc())
             raise e
         
