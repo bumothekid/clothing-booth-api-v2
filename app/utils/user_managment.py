@@ -82,47 +82,6 @@ class UserManager:
             logger.error(f"An unexpected error occurred while upgrading a guest account: {e}")
             logger.error(traceback.format_exc())
             raise e
-    
-    def registerNewUser(self, email: str, username: str, password: str, profilePicture: str) -> tuple:
-        try:
-            email = email.lower()
-            
-            if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                raise EmailInvalidError("The provided email is invalid.")
-            
-            if len(password) < 8:
-                raise PasswordTooShortError("The provided password is too short.")
-            
-            if len(username) < 3:
-                raise UsernameTooShortError("The provided username is too short.")
-            
-            if len(username) > 32:
-                raise UsernameTooLongError("The provided username is too long.")
-            
-            if profilePicture not in os.listdir("app/static/profile_pictures/default/"):
-                raise UserProfilePictureNotFoundError("The provided profile picture is not found in the default directory.")
-            
-            with Database.getConnection() as conn:
-                cursor = conn.cursor()
-                
-                hashedPassword = self._hashPassword(password)
-                
-                userID = str(uuid.uuid4())
-                cursor.execute("INSERT INTO users(user_id, email, username, password, profile_picture) VALUES (%s, %s,  %s, %s, %s);", (userID, email, username, hashedPassword, "/public/profile_pictures/default/" + profilePicture))
-                conn.commit()
-                
-                return authentication_manager._generate_token_pair(userID)
-        except IntegrityError as e:
-            if "email" in e.msg:
-                raise EmailAlreadyInUseError("The provided 'email' is already in use.")
-            elif "username" in e.msg:
-                raise UsernameAlreadyInUseError("The provided 'username' is already in use.")
-            else:
-                raise Exception(e.msg)
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while signing up the user: {e}")
-            logger.error(traceback.format_exc())
-            raise e
         
     def deleteAccount(self, token: str, password: str) -> None:
         try:
