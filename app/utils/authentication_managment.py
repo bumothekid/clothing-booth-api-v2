@@ -59,13 +59,17 @@ class AuthenticationManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT user_id FROM refresh_tokens WHERE refresh_token = %s;", (refresh_token,))
-                user_id = cursor.fetchone()
+                cursor.execute("SELECT user_id, refresh_token_expiry FROM refresh_tokens WHERE refresh_token = %s;", (refresh_token,))
+                result = cursor.fetchone()
 
-                if not user_id:
+                if not result:
                     raise AuthRefreshTokenInvalidError("The provided refresh token is invalid.")
+                
+                if isinstance(result[1], datetime):
+                    if result[1] < datetime.now():
+                        raise AuthRefreshTokenInvalidError("The provided refresh token is invalid.")
 
-                user_id = user_id[0]
+                user_id = result[0]
 
                 is_guest = self._get_payload_from_access_token(old_access_token).get('is_guest', False)
                 access_token = self._generate_access_token(user_id, is_guest=is_guest)
