@@ -1,25 +1,31 @@
+from dataclasses import dataclass, asdict
 from typing import Optional
 from datetime import datetime
 
-class PrivateUser:
-    def __init__(self, userid: str , username: str, createdAt: datetime, updatedAt: datetime, email: str, profilePicture: Optional[str] = None, friends: Optional[list] = None, outgoingFriendRequests: Optional[list] = None, incomingFriendRequests: Optional[list] = None):
-        self.user_id = userid
-        self.username = username
-        self.email = email
-        self.profile_picture = profilePicture
-        self.created_at = createdAt
-        self.updated_at = updatedAt
-        self.friends = friends
-        self.outgoing_friend_requests = outgoingFriendRequests
-        self.incoming_friend_requests = incomingFriendRequests
+@dataclass
+class User:
+    user_id: str
+    is_guest: bool
+    created_at: datetime
+    updated_at: datetime
+    username: Optional[str] = None
+    email: Optional[str] = None
+    profile_picture: Optional[str] = None
     
-    def as_dict(self) -> dict:
-        return self.__dict__
-        
-class PublicUser:
-    def __init__(self, userid: str , username: str, createdAt: datetime, profilePicture: Optional[str] = None, friends: Optional[list] = None):
-        self.user_id = userid
-        self.username = username
-        self.profile_picture = profilePicture
-        self.created_at = createdAt
-        self.friends = friends
+    def to_dict(self, exclude_none=True):
+        d = asdict(self)
+        if exclude_none:
+            d = {k: v for k, v in d.items() if v is not None}
+        return d
+    
+    @classmethod
+    def from_dict(self, data: dict):
+        return User(
+            user_id=data.get("user_id"),
+            is_guest=data.get("is_guest"),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+            username=data.get("username"),
+            email=data.get("email"),
+            profile_picture=data.get("profile_picture")
+            )
