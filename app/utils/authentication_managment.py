@@ -195,6 +195,20 @@ class AuthenticationManager:
             logger.error(traceback.format_exc())
             raise
         
+    def _add_user_to_database(self, is_guest: bool = True, email: str = None, username: str = None, password: str = None, profilePicture: str = None) -> str:
+        user_id = str(uuid.uuid4())
+
+        try:
+            with Database.getConnection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO users(user_id, is_guest, email, username, password, profile_picture) VALUES (%s, %s, %s, %s, %s, %s);", (user_id, is_guest, email, username, password, profilePicture))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while creating user: {e}")
+            logger.error(traceback.format_exc())
+            
+        return user_id
+        
     def _verify_access_token(self, token: str) -> bool:
         try:
             jwt.decode(token, SECRET_TOKEN_KEY, algorithms=['HS256'])
