@@ -19,7 +19,7 @@ class AuthAccessTokenMissingError(AuthValidationError):
 class AuthRefreshTokenMissingError(AuthValidationError):
     def __init__(self, message="Refresh token is missing from the request."):
         super().__init__(message)
-
-class AuthUserIDMissingError(AuthValidationError):
-    def __init__(self, message="User ID is missing from the request."):
+        
+class AuthCredentialsWrongError(AuthValidationError):
+    def __init__(self, message="The credentials to sign in are wrong."):
         super().__init__(message)

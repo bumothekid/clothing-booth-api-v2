@@ -47,3 +47,21 @@ class OutfitPermissionError(PermissionError):
 class AuthValidationError(ValidationError):
     def __init__(self, message="Authentication validation error occurred"):
         super().__init__(message)
+        
+# User
+
+class UserValidationError(ValidationError):
+    def __init__(self, message="User validation error occurred"):
+        super().__init__(message)
+
+class UserNotFoundError(NotFoundError):
+    def __init__(self, message="User not found"):
+        super().__init__(message)
+
+class UserConflictError(ConflictError):
+    def __init__(self, message="User conflict error occurred"):
+        super().__init__(message)
+
+class UserPermissionError(PermissionError):
+    def __init__(self, message="You do not have permission to access this user"):
+        super().__init__(message)

@@ -9,7 +9,11 @@ from app.utils.exceptions.base import (
     OutfitValidationError,
     OutfitNotFoundError,
     OutfitPermissionError,
-    AuthValidationError
+    AuthValidationError,
+    UserValidationError,
+    UserPermissionError,
+    UserConflictError,
+    UserNotFoundError
 )
 
 from app.utils.exceptions.validation import UnsupportedFileTypeError, FileTooLargeError, ImageUnclearError
@@ -37,7 +41,21 @@ from app.utils.exceptions.outfits import (
     OutfitNameTooLongError,
     OutfitDescriptionTooLongError
 )
-from app.utils.exceptions.auth import AuthTokenExpiredError, AuthAccessTokenInvalidError, AuthRefreshTokenInvalidError, AuthAccessTokenMissingError, AuthRefreshTokenMissingError, AuthUserIDMissingError
+from app.utils.exceptions.auth import AuthTokenExpiredError, AuthAccessTokenInvalidError, AuthRefreshTokenInvalidError, AuthAccessTokenMissingError, AuthRefreshTokenMissingError, AuthCredentialsWrongError
+from app.utils.exceptions.user import (
+    SignInNameMissingError,
+    EmailMissingError,
+    UsernameMissingError,
+    PasswordMissingError,
+    UserIDMissingError,
+    EmailInvalidError,
+    ProfilePictureInvalidError,
+    UsernameTooShortError,
+    UsernameTooLongError,
+    PasswordTooShortError,
+    EmailAlreadyInUseError,
+    UsernameAlreadyInUseError
+)
 
 __all__ = [
     "ValidationError",
@@ -79,5 +97,21 @@ __all__ = [
     "AuthRefreshTokenInvalidError",
     "AuthAccessTokenMissingError",
     "AuthRefreshTokenMissingError",
-    "AuthUserIDMissingError"
+    "AuthCredentialsWrongError",
+    "UserValidationError",
+    "UserNotFoundError",
+    "UserPermissionError",
+    "UserConflictError",
+    "UserIDMissingError",
+    "SignInNameMissingError",
+    "EmailMissingError",
+    "UsernameMissingError",
+    "PasswordMissingError",
+    "EmailInvalidError",
+    "UsernameTooShortError",
+    "UsernameTooLongError",
+    "PasswordTooShortError",
+    "ProfilePictureInvalidError",
+    "EmailAlreadyInUseError",
+    "UsernameAlreadyInUseError"
 ]
