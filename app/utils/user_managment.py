@@ -38,17 +38,6 @@ class UserManager:
                            );
                            """)
             conn.commit()
-    
-    def _hashPassword(self, password: str) -> str:
-        return PasswordHasher().hash(password)
-    
-    def _getSignInDetails(self, username: str = None, email: str = None) -> tuple:
-        if username:
-            return username.lower(), "username"
-        elif email:
-            return email.lower(), "email"
-        else:
-            raise ValueError("Either username or email must be provided.")
 
     def upgrade_guest_account(self, token: str, email: Optional[str], username: Optional[str], password: str, profile_picture: Optional[str]) -> None:
         if not (isinstance(email, str) and email.strip()) and not (isinstance(username, str) and username.strip()):
@@ -75,7 +64,7 @@ class UserManager:
 
         user_id = authentication_manager.get_user_id_from_token(token)
         
-        hashed_password = self._hashPassword(password)
+        hashed_password = PasswordHasher.hash(password)
         
         try:
             with Database.getConnection() as conn:
