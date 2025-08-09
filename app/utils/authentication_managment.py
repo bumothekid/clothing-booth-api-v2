@@ -2,6 +2,7 @@ __all__ = ["authentication_manager", "authorize_request"]
 
 import random
 import base64
+import uuid
 import jwt
 from os import getenv
 from typing import Optional
@@ -12,7 +13,6 @@ from flask import request, jsonify
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from app.utils.database import Database
-from app.utils.user_managment import user_manager
 from app.utils.exceptions import AuthValidationError, AuthTokenExpiredError, AuthAccessTokenInvalidError, AuthRefreshTokenInvalidError, AuthAccessTokenMissingError, AuthRefreshTokenMissingError, UserIDMissingError, AuthCredentialsWrongError
 from app.utils.logging import get_logger
 
@@ -48,6 +48,12 @@ class AuthenticationManager:
                            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
                            );
                            """)
+            
+            cursor.execute("""CREATE EVENT IF NOT EXISTS delete_expired_refresh_tokens
+                            ON SCHEDULE EVERY 1 DAY
+                            STARTS CONCAT(CURDATE(), ' 09:00:00')
+                            DO
+                            DELETE FROM refresh_tokens WHERE refresh_token_expiry < NOW();""")
             conn.commit()
 
     def refresh_access_token(self, old_access_token: Optional[str], refresh_token:  Optional[str]) -> tuple:
@@ -120,7 +126,7 @@ class AuthenticationManager:
         
     def register_guest(self) -> tuple:
         try:
-            user_id = user_manager.add_user_to_database()
+            user_id = self._add_user_to_database()
 
             return self._generate_token_pair(user_id, is_guest=True)
         except Exception as e:
