@@ -181,6 +181,15 @@ class AuthenticationManager:
             raise ValueError("The is_guest parameter must be a boolean value.")
 
         try:
+            with Database.getConnection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT user_id, refresh_token, refresh_token_expiry from refresh_tokens WHERE user_id = %s ORDER BY refresh_token_expiry ASC", (user_id, ))
+                result = cursor.fetchall()
+                
+                if len(result) >= 5:
+                    oldest = result[0]
+                    cursor.execute("DELETE FROM refresh_tokens WHERE refresh_token = %s", (oldest[1], ))
+            
             refresh_token = self._generate_refresh_token()
             refreshTokenExpiry = (datetime.now() + timedelta(days=REFRESH_TOKEN_EXPIRY_DAYS)).strftime('%Y-%m-%d %H:%M:%S')
             
