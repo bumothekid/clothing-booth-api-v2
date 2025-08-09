@@ -69,7 +69,7 @@ class UserManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("UPDATE users SET is_guest = %s, email = %s, username = %s, password = %s, profile_picture = %s WHERE user_id = %s", (False, email.lower(), username.lower(), hashed_password, profile_picture, user_id))
+                cursor.execute("UPDATE users SET is_guest = %s, email = %s, username = %s, password = %s, profile_picture = %s WHERE user_id = %s;", (False, email.lower(), username.lower(), hashed_password, profile_picture, user_id))
         except IntegrityError as e:
             if "email" in e.msg:
                 raise EmailAlreadyInUseError("The provided email is already in use.")
@@ -83,26 +83,23 @@ class UserManager:
             logger.error(traceback.format_exc())
             raise e
         
-    def deleteAccount(self, token: str, password: str) -> None:
+    def delete_account(self, token: str, password: str) -> None:
+        user_id = authentication_manager.get_user_id_from_token(token)
+        
         try:
-            userID = authentication_manager.retrieveUserIDByToken(token)
-            
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT password FROM users WHERE user_id = %s;", (userID, ))
-                userPassword = cursor.fetchone()[0]
+                cursor.execute("SELECT password FROM users WHERE user_id = %s;", (user_id, ))
+                db_password = cursor.fetchone()
+            
+                PasswordHasher().verify(db_password, password)
                 
-                try:
-                    PasswordHasher().verify(userPassword, password)
-                except VerifyMismatchError:
-                    raise WrongSignInCredentialsError("The provided sign in credentials are wrong.")
-                
-                cursor.execute("DELETE FROM users WHERE user_id = %s;", (userID, ))
+                cursor.execute("DELETE FROM users WHERE user_id = %s;", (user_id, ))
                 conn.commit()
-        except WrongSignInCredentialsError as e:
-            raise e
+        except VerifyMismatchError:
+            raise AuthCredentialsWrongError("The provided sign in credentials are wrong.")
         except Exception as e:
-            logger.error(f"An unexpected error occurred while deleting the user: {e}")
+            logger.error(f"An unexpected error occurred while trying to delete a user: {e}")
             logger.error(traceback.format_exc())
             raise e
     
@@ -134,7 +131,6 @@ class UserManager:
             logger.error(f"An unexpected error occurred while setting the username: {e}")
             logger.error(traceback.format_exc())
             raise e
-            
         
     def getMyUser(self, token: str) -> PrivateUser:
         try:
