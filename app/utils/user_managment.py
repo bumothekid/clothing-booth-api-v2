@@ -4,8 +4,9 @@ import random
 import traceback
 import uuid
 import os
+from typing import Optional
 from app.utils.database import Database
-from app.utils.exceptions import UnsupportedFileTypeError #EmailAlreadyInUseError, UnsupportedFileTypeError, UserNotFoundError, UserProfilePictureNotFoundError, UsernameAlreadyInUseError, UsernameTooShortError, UsernameTooLongError, EmailInvalidError, PasswordTooShortError, WrongSignInCredentialsError
+from app.utils.exceptions import UnsupportedFileTypeError, PasswordMissingError, SignInNameMissingError, EmailInvalidError, PasswordTooShortError, UsernameTooLongError, EmailMissingError, UsernameTooShortError, UsernameMissingError, ProfilePictureInvalidError, EmailAlreadyInUseError, UsernameAlreadyInUseError, AuthCredentialsWrongError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from app.utils.authentication_managment import authentication_manager
@@ -48,47 +49,52 @@ class UserManager:
             return email.lower(), "email"
         else:
             raise ValueError("Either username or email must be provided.")
+
+    def upgrade_guest_account(self, token: str, email: Optional[str], username: Optional[str], password: str, profile_picture: Optional[str]) -> None:
+        if not (isinstance(email, str) and email.strip()) and not (isinstance(username, str) and username.strip()):
+            raise SignInNameMissingError("Either an email or username is required.")
+
+        if email:
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                raise EmailInvalidError("The provided email is invalid.")
+
+        if username:
+            if len(username) < 3:
+                raise UsernameTooShortError("Username must be at least 3 characters long.")
+            if len(username) > 20:
+                raise UsernameTooLongError("Username must be at most 20 characters long.")
+
+        if not isinstance(password, str):
+            raise PasswordMissingError("Password is required.")
+
+        if len(password) < 8:
+            raise PasswordTooShortError("Password must be at least 8 characters long.")
+
+        if profile_picture is not None and profile_picture not in os.listdir("app/static/profile_pictures/default/"):
+            raise ProfilePictureInvalidError("Profile picture must be from the default options.")
+
+        user_id = authentication_manager.get_user_id_from_token(token)
         
-    def loginWithCredentials(self, password, username: str = None, email: str = None) -> tuple:
+        hashed_password = self._hashPassword(password)
+        
         try:
-            signInName, signInCheck = self._getSignInDetails(username, email)
-            
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                if signInCheck == "username":
-                    cursor.execute("SELECT password, user_id FROM users WHERE username = %s;", (signInName, ))
-                else:
-                    cursor.execute("SELECT password, user_id FROM users WHERE email = %s;", (signInName, ))
-                user = cursor.fetchone()
-            
-                if not user:
-                    raise WrongSignInCredentialsError("The provided sign in credentials are wrong.")
-                
-                userPassword, userID = user
-                
-                try:
-                    PasswordHasher().verify(userPassword, password)
-                except VerifyMismatchError:
-                    raise WrongSignInCredentialsError("The provided sign in credentials are wrong.")
-        except WrongSignInCredentialsError as e:
-            raise e
+                cursor.execute("UPDATE users SET is_guest = %s, email = %s, username = %s, password = %s, profile_picture = %s WHERE user_id = %s", (False, email.lower(), username.lower(), hashed_password, profile_picture, user_id))
+        except IntegrityError as e:
+            if "email" in e.msg:
+                raise EmailAlreadyInUseError("The provided email is already in use.")
+            elif "username" in e.msg:
+                raise UsernameAlreadyInUseError("The provided username is already in use.")
+            else:
+                logger.error(f"Unexpected IntegrityError: {e.msg}")
+                raise Exception(e.msg)
         except Exception as e:
-            logger.error(f"An unexpected error occurred while signing in the user: {e}")
+            logger.error(f"An unexpected error occurred while upgrading a guest account: {e}")
             logger.error(traceback.format_exc())
             raise e
-        
-        return authentication_manager.generate_token_pair(userID)
 
-    def register_guest(self) -> tuple:
-        try:
-            user_id = self._create_user()
-
-            return authentication_manager.generate_token_pair(user_id, is_guest=True)
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while registering guest: {e}")
-            raise
-
-    def _create_user(self, is_guest: bool = True, email: str = None, username: str = None, password: str = None, profilePicture: str = None) -> str:
+    def add_user_to_database(self, is_guest: bool = True, email: str = None, username: str = None, password: str = None, profilePicture: str = None) -> str:
         user_id = str(uuid.uuid4())
 
         try:
@@ -131,7 +137,7 @@ class UserManager:
                 cursor.execute("INSERT INTO users(user_id, email, username, password, profile_picture) VALUES (%s, %s,  %s, %s, %s);", (userID, email, username, hashedPassword, "/public/profile_pictures/default/" + profilePicture))
                 conn.commit()
                 
-                return authentication_manager.generate_token_pair(userID)
+                return authentication_manager._generate_token_pair(userID)
         except IntegrityError as e:
             if "email" in e.msg:
                 raise EmailAlreadyInUseError("The provided 'email' is already in use.")

@@ -9,8 +9,11 @@ from string import ascii_letters, digits
 import traceback
 from datetime import datetime, timedelta
 from flask import request, jsonify
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from app.utils.database import Database
-from app.utils.exceptions import AuthValidationError, AuthTokenExpiredError, AuthAccessTokenInvalidError, AuthRefreshTokenInvalidError, AuthAccessTokenMissingError, AuthRefreshTokenMissingError, AuthUserIDMissingError
+from app.utils.user_managment import user_manager
+from app.utils.exceptions import AuthValidationError, AuthTokenExpiredError, AuthAccessTokenInvalidError, AuthRefreshTokenInvalidError, AuthAccessTokenMissingError, AuthRefreshTokenMissingError, UserIDMissingError, AuthCredentialsWrongError
 from app.utils.logging import get_logger
 
 SECRET_TOKEN_KEY = getenv("SECRET_TOKEN_KEY")
@@ -46,34 +49,6 @@ class AuthenticationManager:
                            );
                            """)
             conn.commit()
-
-    def generate_token_pair(self, user_id: Optional[str], is_guest: Optional[bool]) -> tuple:
-        if not isinstance(user_id, str) or not user_id.strip():
-            raise AuthUserIDMissingError("The user_id is missing or invalid.")
-        
-        if not isinstance(is_guest, bool):
-            raise ValueError("The is_guest parameter must be a boolean value.")
-
-        try:
-            refresh_token = self._generate_refresh_token()
-            refreshTokenExpiry = (datetime.now() + timedelta(days=REFRESH_TOKEN_EXPIRY_DAYS)).strftime('%Y-%m-%d %H:%M:%S')
-            
-            with Database.getConnection() as conn:
-                cursor = conn.cursor()
-                if not is_guest:
-                    cursor.execute("INSERT INTO refresh_tokens(user_id, refresh_token, refresh_token_expiry) VALUES (%s, %s, %s);", (user_id, refresh_token, refreshTokenExpiry))
-                else:
-                    cursor.execute("INSERT INTO refresh_tokens(user_id, refresh_token) VALUES(%s, %s);", (user_id, refresh_token))
-                    
-                conn.commit()
-
-            access_token = self._generate_access_token(user_id, is_guest=is_guest)
-
-            return access_token, ACCESS_TOKEN_EXPIRY_HOURS * 60 * 60, refresh_token
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while generating a new token pair: {e}")
-            logger.error(traceback.format_exc())
-            raise
 
     def refresh_access_token(self, old_access_token: Optional[str], refresh_token:  Optional[str]) -> tuple:
         if not isinstance(old_access_token, str) or not old_access_token.strip():
@@ -138,6 +113,38 @@ class AuthenticationManager:
             logger.error(f"An unexpected error occurred while deleting a refresh token: {e}")
             logger.error(traceback.format_exc())
             raise e
+        
+    def register_guest(self) -> tuple:
+        try:
+            user_id = user_manager.add_user_to_database()
+
+            return self._generate_token_pair(user_id, is_guest=True)
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while registering guest: {e}")
+            raise
+        
+    def sign_in_user(self, email: Optional[str], username: Optional[str], password: str) -> tuple:
+        try:
+            with Database.getConnection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT password, user_id FROM users WHERE email = %s OR username = %s", (email, username))
+                user = cursor.fetchone()
+            
+                if not user:
+                    raise AuthCredentialsWrongError("The provided sign in credentials are wrong.")
+                
+                try:
+                    PasswordHasher().verify(user[0], password)
+                except VerifyMismatchError:
+                    raise AuthCredentialsWrongError("The provided sign in credentials are wrong.")
+        except AuthCredentialsWrongError as e:
+            raise e
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while signing in the user: {e}")
+            logger.error(traceback.format_exc())
+            raise e
+        
+        return self._generate_token_pair(user[1], False)
 
     def get_user_id_from_token(self, token: str) -> str:
         if not isinstance(token, str) or not token.strip():
@@ -152,6 +159,34 @@ class AuthenticationManager:
             logger.error(f"An unexpected error occurred while getting user ID from token: {e}")
             logger.error(traceback.format_exc())
             raise e
+        
+    def _generate_token_pair(self, user_id: Optional[str], is_guest: Optional[bool]) -> tuple:
+        if not isinstance(user_id, str) or not user_id.strip():
+            raise UserIDMissingError("The user_id is missing or invalid.")
+        
+        if not isinstance(is_guest, bool):
+            raise ValueError("The is_guest parameter must be a boolean value.")
+
+        try:
+            refresh_token = self._generate_refresh_token()
+            refreshTokenExpiry = (datetime.now() + timedelta(days=REFRESH_TOKEN_EXPIRY_DAYS)).strftime('%Y-%m-%d %H:%M:%S')
+            
+            with Database.getConnection() as conn:
+                cursor = conn.cursor()
+                if not is_guest:
+                    cursor.execute("INSERT INTO refresh_tokens(user_id, refresh_token, refresh_token_expiry) VALUES (%s, %s, %s);", (user_id, refresh_token, refreshTokenExpiry))
+                else:
+                    cursor.execute("INSERT INTO refresh_tokens(user_id, refresh_token) VALUES(%s, %s);", (user_id, refresh_token))
+                    
+                conn.commit()
+
+            access_token = self._generate_access_token(user_id, is_guest=is_guest)
+
+            return access_token, ACCESS_TOKEN_EXPIRY_HOURS * 60 * 60, refresh_token
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while generating a new token pair: {e}")
+            logger.error(traceback.format_exc())
+            raise
         
     def _verify_access_token(self, token: str) -> bool:
         try:
