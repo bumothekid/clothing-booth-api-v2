@@ -12,7 +12,7 @@ from app.utils.exceptions import (
     ConflictError,
     PermissionError
 )
-from app.utils.database import Database
+import traceback
 from app.utils.authentication_managment import authentication_manager
 from app.utils.user_managment import user_manager
 from app.utils.clothing_managment import clothing_manager
@@ -55,6 +55,8 @@ def outfit_permission_error_handler(error):
 
 @api.errorhandler(Exception)
 def internal_error_handler(error):
+    logger.debug(error)
+    logger.debug(traceback.format_exc())
     return jsonify({"error": "An unexpected error occurred."}), 500
 
 @api.errorhandler(404)
