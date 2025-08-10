@@ -117,7 +117,7 @@ class ClothingManager:
         user_id = authentication_manager.get_user_id_from_token(token)
         clothing_id = str(uuid.uuid4())
 
-        clothing = Clothing(clothing_id, True, name, ClothingCategory[category], color, datetime.now(), user_id, image_filename, seasons, tags, description)
+        clothing = Clothing(clothing_id, True, name, ClothingCategory[category.upper()], color, datetime.now(), user_id, image_filename, seasons, tags, description)
 
         try:
             with Database.getConnection() as conn:
