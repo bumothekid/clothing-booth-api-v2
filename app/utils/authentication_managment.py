@@ -76,15 +76,9 @@ class AuthenticationManager:
                         raise AuthRefreshTokenInvalidError("The provided refresh token is invalid.")
 
                 user_id = result[0]
-
-                is_guest: bool = self._get_payload_from_access_token(old_access_token).get('is_guest', False)
                 
-                if is_guest:
-                    cursor.execute("SELECT is_guest FROM users WHERE user_id = %s", (user_id, ))
-                    db_is_guest = cursor.fetchone()[0]
-                    
-                    if db_is_guest != is_guest:
-                        is_guest = db_is_guest
+                cursor.execute("SELECT is_guest FROM users WHERE user_id = %s", (user_id, ))
+                is_guest = cursor.fetchone()[0]
                     
                 access_token = self._generate_access_token(user_id, is_guest=is_guest)
                 new_refresh_token = self._generate_refresh_token()
@@ -238,7 +232,7 @@ class AuthenticationManager:
         try:
             jwt.decode(token, SECRET_TOKEN_KEY, algorithms=['HS256'])
             return True
-        except:
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             return False
         
     def _get_payload_from_access_token(self, token: str) -> dict:
