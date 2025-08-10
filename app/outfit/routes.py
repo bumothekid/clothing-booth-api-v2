@@ -20,7 +20,7 @@ def create_outfit():
     clothing_ids = data.get("clothing_ids", None)
     seasons = data.get("seasons", None)
     tags = data.get("tags", None)
-    outfit = outfit_manager.create_outfit(token, name, seasons, tags, clothing_ids, description)
+    outfit = outfit_manager.create_outfit(token, name, clothing_ids, seasons, tags, description)
 
     return jsonify({"outfit": outfit.to_dict()}), 201
     
