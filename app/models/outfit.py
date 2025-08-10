@@ -1,7 +1,7 @@
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 class OutfitTags(str, Enum):
     CASUAL = "Casual"
@@ -33,13 +33,8 @@ class Outfit:
     description: Optional[str] = None
         
     def to_dict(self) -> dict:
-        return {
-            "outfit_id": self.outfit_id,
-            "name": self.name,
-            "description": self.description,
-            "seasons": [season.value for season in self.seasons] if self.seasons is not None else None,
-            "tags": [tag.value for tag in self.tags] if self.tags is not None else None,
-            "created_at": self.created_at.isoformat(),
-            "user_id": self.user_id,
-            "clothing_ids": self.clothing_ids
-        }
+        data = asdict(self)
+        
+        if isinstance(data["created_at"], datetime):
+            data["created_at"] = data["created_at"].replace(tzinfo=timezone.utc).isoformat(timespec="seconds")
+        return data
