@@ -63,10 +63,10 @@ class OutfitManager:
         if len(name) > 50:
             raise OutfitNameTooLongError("The provided name is too long, it has to be at most 50 characters long.")
         
-        if not isinstance(clothing_ids, list):
-            raise OutfitClothingIDsMissingError("The provided clothing ID(s) are missing or invalid.")
+        if not isinstance(clothing_ids, list) or not len(clothing_ids) >= 2:
+            raise OutfitClothingIDsMissingError("The clothing_ids are missing.")
 
-        if not isinstance(seasons, None):
+        if seasons is not None:
             if not isinstance(seasons, list) or not all(isinstance(season, str) for season in seasons):
                 raise OutfitSeasonsInvalidError("Seasons must be a list of strings.")
             
@@ -76,7 +76,7 @@ class OutfitManager:
 
             seasons = [OutfitSeason[season.strip().upper()] for season in seasons]
 
-        if not isinstance(tags, None):
+        if tags is not None:
             if not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags):
                 raise OutfitTagsInvalidError("Tags must be a list of strings.")
 
@@ -102,16 +102,18 @@ class OutfitManager:
 
             valid_clothing_ids.append(clothing_id)
 
-        outfit = Outfit(outfit_id, True, name, datetime.now(), user_id, valid_clothing_ids, seasons, tags, description)
+        outfit = Outfit(outfit_id, True, False, name, datetime.now(), user_id, valid_clothing_ids, seasons, tags, description)
 
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO outfit(outfit_id, is_public, name, user_id, description) VALUES (%s, %s, %s, %s, %s);", (outfit.outfit_id, outfit.is_public, outfit.name, outfit.user_id, outfit.description))
-                for season in outfit.seasons:
-                    cursor.execute("INSERT INTO outfit_seasons(outfit_id, season) VALUES (%s, %s);", (outfit.outfit_id, season.name))
-                for tag in outfit.tags:
-                    cursor.execute("INSERT INTO outfit_tags(outfit_id, tag) VALUES (%s, %s);", (outfit.outfit_id, tag.name))
+                cursor.execute("INSERT INTO outfit(outfit_id, is_public, is_favorite, name, user_id, description) VALUES (%s, %s, %s, %s, %s, %s);", (outfit.outfit_id, outfit.is_public, outfit.is_favorite, outfit.name, outfit.user_id, outfit.description))
+                if outfit.seasons:
+                    for season in outfit.seasons:
+                        cursor.execute("INSERT INTO outfit_seasons(outfit_id, season) VALUES (%s, %s);", (outfit.outfit_id, season.name))
+                if outfit.tags:
+                    for tag in outfit.tags:
+                        cursor.execute("INSERT INTO outfit_tags(outfit_id, tag) VALUES (%s, %s);", (outfit.outfit_id, tag.name))
                 for clothing_id in outfit.clothing_ids:
                     cursor.execute("INSERT INTO outfit_clothing(outfit_id, clothing_id) VALUES (%s, %s);", (outfit.outfit_id, clothing_id))
                 conn.commit()
@@ -131,7 +133,7 @@ class OutfitManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT outfit_id, is_public, name, created_at, user_id, description FROM outfit WHERE outfit_id = %s", (outfit_id, ))
+                cursor.execute("SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, description FROM outfit WHERE outfit_id = %s", (outfit_id, ))
                 outfit = cursor.fetchone()
                 
                 if outfit is None:
@@ -150,7 +152,7 @@ class OutfitManager:
                 cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit_id,))
                 clothing_list = cursor.fetchall()
 
-                outfit = Outfit(outfit[0], outfit[1], outfit[2], outfit[3], outfit[4], [clothing_id[0] for clothing_id in clothing_list], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags], outfit[5])
+                outfit = Outfit(outfit[0], outfit[1], outfit[2], outfit[3], outfit[4], outfit[5], [clothing_id[0] for clothing_id in clothing_list], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags], outfit[6])
         except OutfitNotFoundError as e:
             raise e
         except OutfitPermissionError as e:
@@ -176,11 +178,11 @@ class OutfitManager:
         
         outfit_list: list[Outfit] = []
 
-        statement = f"SELECT outfit_id, is_public, name, is_favorite, user_id, description, created_at FROM clothing WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
+        statement = f"SELECT outfit_id, is_public, is_favorite, name, user_id, description, created_at FROM clothing WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
         params = (user_id, )
         
         if user_id != user_id_from_token:
-            statement = f"SELECT outfit_id, is_public, name, created_at, user_id, description FROM clothing WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
+            statement = f"SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, description FROM clothing WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
             params = (user_id, True, )
         
         try:
@@ -200,7 +202,7 @@ class OutfitManager:
                     cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit[0],))
                     clothing_list = cursor.fetchall()
                     
-                    outfit_instance = Outfit(outfit[0], outfit[1], outfit[2], outfit[3], outfit[4], [clothing_id[0] for clothing_id in clothing_list], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags], outfit[5])
+                    outfit_instance = Outfit(outfit[0], outfit[1], outfit[2], outfit[3], outfit[4], outfit[5], [clothing_id[0] for clothing_id in clothing_list], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags], outfit[6])
                     outfit_list.append(outfit_instance)
         except Exception as e:
             logger.error(f"An unexpected error occurred while retrieving outfits for user {user_id}: {e}")
