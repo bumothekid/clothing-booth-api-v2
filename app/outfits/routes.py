@@ -3,9 +3,9 @@ from app.utils.outfit_managment import outfit_manager
 from app.utils.limiter import limiter
 from app.utils.authentication_managment import authorize_request
 
-outfit = Blueprint("outfits", __name__)
+outfits = Blueprint("outfits", __name__)
 
-@outfit.route('/', methods=['POST'])
+@outfits.route('/', methods=['POST'])
 @limiter.limit('5 per minute')
 @authorize_request
 def create_outfit():
@@ -24,7 +24,7 @@ def create_outfit():
 
     return jsonify({"outfit": outfit.to_dict()}), 201
     
-@outfit.route('/<outfit_id>', methods=['GET'])
+@outfits.route('/<outfit_id>', methods=['GET'])
 @limiter.limit('5 per minute')
 @authorize_request
 def get_outfit(outfit_id: str):
@@ -33,7 +33,7 @@ def get_outfit(outfit_id: str):
 
     return jsonify(outfit.to_dict()), 200
 
-@outfit.route('/<outfit_id>', methods=['DELETE'])
+@outfits.route('/<outfit_id>', methods=['DELETE'])
 @limiter.limit('5 per minute')
 @authorize_request
 def delete_outfit(outfit_id: str):
