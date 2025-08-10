@@ -34,23 +34,6 @@ def get_clothing_piece(clothing_id: str):
     clothing = clothing_manager.get_clothing_by_id(token, clothing_id)
     return jsonify(clothing.to_dict()), 200
 
-@clothing.route('/list/<user_id>', methods=['GET'])
-@limiter.limit('5 per minute')
-@authorize_request
-def get_clothing_list(user_id: str):
-    token = request.headers["Authorization"]
-    limit = request.args.get("limit", None)
-    offset = request.args.get("offset", None)
-
-    if limit is not None:
-        limit = 1000
-    if offset is not None:
-        offset = 0
-
-    clothing_list = clothing_manager.get_list_of_clothing_by_user_id(token, user_id, limit, offset)
-
-    return jsonify({"limit": limit, "offset": offset, "clothing": [clothing.to_dict() for clothing in clothing_list]}), 200
-
 @clothing.route('<clothing_id>', methods=['DELETE'])
 @limiter.limit('5 per minute')
 @authorize_request

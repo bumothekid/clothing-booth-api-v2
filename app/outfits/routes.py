@@ -3,7 +3,7 @@ from app.utils.outfit_managment import outfit_manager
 from app.utils.limiter import limiter
 from app.utils.authentication_managment import authorize_request
 
-outfit = Blueprint("outfit", __name__)
+outfit = Blueprint("outfits", __name__)
 
 @outfit.route('/', methods=['POST'])
 @limiter.limit('5 per minute')
@@ -32,23 +32,6 @@ def get_outfit(outfit_id: str):
     outfit = outfit_manager.get_outfit_by_id(outfit_id, token)
 
     return jsonify(outfit.to_dict()), 200
-
-@outfit.route('/list/<user_id>', methods=['GET'])
-@limiter.limit('5 per minute')
-@authorize_request
-def get_outfit_list(user_id: str):
-    token = request.headers["Authorization"]
-    limit = request.args.get("limit", None)
-    offset = request.args.get("offset", None)
-    
-    if limit is not None:
-        limit = 1000
-    if offset is not None:
-        offset = 0
-
-    outfit_list = outfit_manager.get_list_of_outfits_by_user_id(user_id, token, limit, offset)
-
-    return jsonify({"limit": limit, "offset": offset, "outfits": [outfit.to_dict() for outfit in outfit_list]}), 200
 
 @outfit.route('/<outfit_id>', methods=['DELETE'])
 @limiter.limit('5 per minute')

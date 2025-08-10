@@ -1,10 +1,36 @@
 from flask import Blueprint, request, jsonify, Response
 from ..utils.user_managment import user_manager
-from ..utils.exceptions import UsernameTooShortError, UsernameTooLongError, UsernameAlreadyInUseError, UserNotFoundError, UnsupportedFileTypeError, UserProfilePictureNotFoundError
+from app.utils.outfit_managment import outfit_manager
+from app.utils.clothing_managment import clothing_manager
+from ..utils.exceptions import UsernameTooShortError, UsernameTooLongError, UsernameAlreadyInUseError, UserNotFoundError, UnsupportedFileTypeError
 from ..utils.limiter import limiter
 from ..utils.authentication_managment import authorize_request
 
 users = Blueprint("users", __name__)
+
+@users.route('/<user_id>/outfits', methods=['GET'])
+@limiter.limit('5 per minute')
+@authorize_request
+def get_outfit_list(user_id: str):
+    token = request.headers["Authorization"]
+    limit = request.args.get("limit", 1000)
+    offset = request.args.get("offset", 0)
+
+    outfit_list = outfit_manager.get_list_of_outfits_by_user_id(user_id, token, limit, offset)
+
+    return jsonify({"limit": limit, "offset": offset, "outfits": [outfit.to_dict() for outfit in outfit_list]}), 200
+
+@users.route('/<user_id>/clothing', methods=['GET'])
+@limiter.limit('5 per minute')
+@authorize_request
+def get_clothing_list(user_id: str):
+    token = request.headers["Authorization"]
+    limit = request.args.get("limit", 1000)
+    offset = request.args.get("offset", 0)
+
+    clothing_list = clothing_manager.get_list_of_clothing_by_user_id(token, user_id, limit, offset)
+
+    return jsonify({"limit": limit, "offset": offset, "clothing": [clothing.to_dict() for clothing in clothing_list]}), 200
 
 @users.route('/me/username', methods=['PUT'])
 @authorize_request
@@ -84,10 +110,10 @@ def setMyUserProfilePicture(token: str) -> Response:
         if not profilePicture.endswith(".png"):
             profilePicture += ".png"
         
-        try:
-            user = user_manager.setDefaultProfilePicture(profilePicture, token)
-        except UserProfilePictureNotFoundError as e:
-            return jsonify({"error": str(e)}), 404
+        #try:
+        #    user = user_manager.setDefaultProfilePicture(profilePicture, token)
+        #except UserProfilePictureNotFoundError as e:
+        #    return jsonify({"error": str(e)}), 404
     
     file = request.files["file"]
     if file.filename == "":
@@ -111,9 +137,9 @@ def getMyUserProfilePicture(token: str) -> Response:
     return jsonify({"path": f"{str(profilePictureURL)}"}), 200
 
 def deleteMyUserProfilePicture(token: str):
-    try:
-        user_manager.removeProfilePicture(token)
-    except UserProfilePictureNotFoundError as e:
-        return jsonify({"error": str(e)}), 404
+    #try:
+    #    user_manager.removeProfilePicture(token)
+    #except UserProfilePictureNotFoundError as e:
+    #    return jsonify({"error": str(e)}), 404
     
     return jsonify({"message": "Profile picture deleted successfully"}), 200
