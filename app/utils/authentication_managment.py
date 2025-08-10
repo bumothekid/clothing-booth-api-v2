@@ -73,7 +73,7 @@ class AuthenticationManager:
                 
                 if isinstance(result[1], datetime):
                     if result[1] < datetime.now():
-                        raise AuthRefreshTokenInvalidError("The provided refresh token is invalid.")
+                        raise AuthTokenExpiredError("The provided refresh token is expired.")
 
                 user_id = result[0]
                 
