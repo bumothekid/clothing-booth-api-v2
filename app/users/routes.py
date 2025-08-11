@@ -16,9 +16,28 @@ def get_outfit_list(user_id: str):
     limit = request.args.get("limit", 1000)
     offset = request.args.get("offset", 0)
 
-    outfit_list = outfit_manager.get_list_of_outfits_by_user_id(user_id, token, limit, offset)
+    outfit_list = outfit_manager.get_list_of_outfits_by_user_id(token, user_id, limit, offset)
 
     return jsonify({"limit": limit, "offset": offset, "outfits": [outfit.to_dict() for outfit in outfit_list]}), 200
+    
+@users.route('/me/outfits', methods=['POST'])
+@limiter.limit('5 per minute')
+@authorize_request
+def create_outfit():
+    token = request.headers['Authorization']
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+    
+    name = data.get("name", None)
+    description = data.get("description", None)
+    clothing_ids = data.get("clothing_ids", None)
+    seasons = data.get("seasons", None)
+    tags = data.get("tags", None)
+    outfit = outfit_manager.create_outfit(token, name, clothing_ids, seasons, tags, description)
+
+    return jsonify({"outfit": outfit.to_dict()}), 201
 
 @users.route('/<user_id>/clothing', methods=['GET'])
 @limiter.limit('5 per minute')
@@ -31,6 +50,27 @@ def get_clothing_list(user_id: str):
     clothing_list = clothing_manager.get_list_of_clothing_by_user_id(token, user_id, limit, offset)
 
     return jsonify({"limit": limit, "offset": offset, "clothing": [clothing.to_dict() for clothing in clothing_list]}), 200
+
+@users.route('/me/clothing', methods=['POST'])
+@limiter.limit('5 per minute')
+@authorize_request
+def create_clothing_piece():
+    token = request.headers["Authorization"]
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+    
+    name = data.get("name", None)
+    description = data.get("description", None)
+    category = data.get("category", None)
+    color = data.get("color", None)
+    seasons = data.get("seasons", [])
+    tags = data.get("tags", [])
+    image_url = data.get("image_url", None)
+
+    clothing = clothing_manager.create_clothing(token, name, category, image_url.split("/")[-1] if image_url.endswith(".webp") else image_url.split("/")[-1] + ".webp", color, seasons, tags, description)
+
+    return jsonify(clothing.to_dict()), 201
 
 @users.route('/me/username', methods=['PUT'])
 @authorize_request

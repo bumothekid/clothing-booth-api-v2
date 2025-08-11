@@ -5,27 +5,6 @@ from app.utils.authentication_managment import authorize_request
 
 clothing = Blueprint("clothing", __name__)
 
-@clothing.route('/', methods=['POST'])
-@limiter.limit('5 per minute')
-@authorize_request
-def create_clothing_piece():
-    token = request.headers["Authorization"]
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-    
-    name = data.get("name", None)
-    description = data.get("description", None)
-    category = data.get("category", None)
-    color = data.get("color", None)
-    seasons = data.get("seasons", [])
-    tags = data.get("tags", [])
-    image_url = data.get("image_url", None)
-
-    clothing = clothing_manager.create_clothing(token, name, category, image_url.split("/")[-1] if image_url.endswith(".webp") else image_url.split("/")[-1] + ".webp", color, seasons, tags, description)
-
-    return jsonify(clothing.to_dict()), 201
-
 @clothing.route('/<clothing_id>', methods=['GET'])
 @limiter.limit('5 per minute')
 @authorize_request
