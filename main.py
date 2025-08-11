@@ -62,6 +62,10 @@ def internal_error_handler(error):
 @api.errorhandler(404)
 def not_found_error_handler(error):
     return jsonify({"error": "Resource not found."}), 404
+
+@api.errorhandler(405)
+def method_not_allowed(error):
+    return jsonify({"error": "Method not allowed."}), 405
     
 def register_blueprints():
     api.register_blueprint(main, url_prefix="/")
