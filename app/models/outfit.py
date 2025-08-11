@@ -38,3 +38,18 @@ class Outfit:
         if isinstance(data["created_at"], datetime):
             data["created_at"] = data["created_at"].replace(tzinfo=timezone.utc).isoformat(timespec="seconds")
         return data
+    
+    @classmethod
+    def from_dict(self, core: dict, clothing_ids: list[str], seasons: Optional[list[OutfitSeason]], tags: Optional[list[OutfitTags]]):
+        return Outfit(
+            outfit_id=core.get("outfit_id"),
+            is_public=bool(core.get("is_public")),
+            is_favorite=bool(core.get("is_favorite")),
+            name=core.get("name"),
+            created_at=core.get("created_at"),
+            user_id=core.get("user_id"),
+            clothing_ids=clothing_ids,
+            seasons=seasons,
+            tags=tags,
+            description=core.get("description")
+            )
