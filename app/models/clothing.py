@@ -1,7 +1,7 @@
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 class ClothingTags(str, Enum):
     CASUAL = "Casual"
@@ -55,23 +55,32 @@ class Clothing:
     name: str
     category: ClothingCategory
     color: str
-    createdAt: datetime
+    created_at: datetime
     user_id: str
     image: str
     seasons: Optional[list[ClothingSeason]] = None
     tags: Optional[list[ClothingTags]] = None
     description: Optional[str] = None
-        
+
     def to_dict(self) -> dict:
-        return {
-            "clothing_id": self.clothing_id,
-            "name": self.name,
-            "category": self.category.value,
-            "description": self.description,
-            "color": self.color,
-            "seasons": [season.value for season in self.seasons],
-            "tags": [tag.value for tag in self.tags],
-            "created_at": self.createdAt.isoformat(),
-            "image": self.image,
-            "user_id": self.user_id
-        }
+        data = asdict(self)
+        
+        if isinstance(data["created_at"], datetime):
+            data["created_at"] = data["created_at"].replace(tzinfo=timezone.utc).isoformat(timespec="seconds")
+        return data
+    
+    @classmethod
+    def from_dict(self, core: dict, seasons: Optional[list[ClothingSeason]], tags: Optional[list[ClothingTags]]):
+        return Clothing(
+            clothing_id=core.get("clothing_id"),
+            is_public=bool(core.get("is_public")),
+            name=core.get("name"),
+            color=core.get("color"),
+            category=ClothingCategory[core.get("category")],
+            created_at=core.get("created_at"),
+            user_id=core.get("user_id"),
+            image=core.get("image"),
+            seasons=seasons,
+            tags=tags,
+            description=core.get("description")
+            )
