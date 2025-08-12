@@ -174,24 +174,34 @@ class ClothingManager:
         
         return clothing
 
-    def get_list_of_clothing_by_user_id(self, token: str, user_id: Optional[str], limit: int = 1000, offset: int = 0) -> list[Clothing]:
+    def get_list_of_clothing_by_user_id(self, token: str, user_id: Optional[str], limit: int = 1000, offset: int = 0, category: str = None) -> list[Clothing]:
         if not isinstance(user_id, str) or not user_id.strip():
             raise ClothingIDMissingError("The provided user ID is missing or invalid.")
 
         user_id_from_token = authentication_manager.get_user_id_from_token(token)
         clothes_list: list[Clothing] = []
-
-        statement = f"SELECT clothing_id, is_public, name, category, color, created_at, user_id, image_id, description FROM clothing WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
-        params = (user_id, )
+        
+        statement = "SELECT clothing_id, is_public, name, category, color, created_at, user_id, image_id, description FROM clothing WHERE user_id = %s"
+        statement_order = f"ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
+        params = [user_id]
         
         if user_id != user_id_from_token:
-            statement = f"SELECT clothing_id, is_public, name, category, color, created_at, user_id, image_id, description FROM clothing WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
-            params = (user_id, True)
+            statement += f"AND is_public = %s"
+            params.append(True)
+            
+        if isinstance(category, str):
+            if category.upper() not in ClothingCategory.__members__:
+                raise ClothingCategoryMissingError("The provided category is not valid. It should be one of the following: " + ", ".join(ClothingCategory.__members__.keys()))
+            
+            statement += "AND category = %s"
+            params.append(category)
+            
+        statement += statement_order
         
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                cursor.execute(statement, params)
+                cursor.execute(statement, tuple(params))
                 clothes = cursor.fetchall()
 
                 for clothing in clothes:

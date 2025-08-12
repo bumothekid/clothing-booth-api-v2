@@ -46,8 +46,9 @@ def get_clothing_list(user_id: str):
     token = request.headers["Authorization"]
     limit = request.args.get("limit", 1000, type=int)
     offset = request.args.get("offset", 0, type=int)
+    category = request.args.get("category", None, type=str)
 
-    clothing_list = clothing_manager.get_list_of_clothing_by_user_id(token, user_id, limit, offset)
+    clothing_list = clothing_manager.get_list_of_clothing_by_user_id(token, user_id, limit, offset, category)
 
     return jsonify({"limit": limit, "offset": offset, "clothing": [clothing.to_dict() for clothing in clothing_list]}), 200
 
