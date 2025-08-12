@@ -68,7 +68,6 @@ def create_clothing_piece():
     seasons = data.get("seasons", [])
     tags = data.get("tags", [])
     image_id = data.get("image_id", None)
-    image_url = data.get("image_url", None)
 
     clothing = clothing_manager.create_clothing(token, name, category, image_id, color, seasons, tags, description)
 
