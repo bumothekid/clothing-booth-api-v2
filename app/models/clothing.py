@@ -20,13 +20,20 @@ class ClothingSeason(str, Enum):
     WINTER = "Winter"
     
 class ClothingCategory(str, Enum):
+    JACKET = "Jacket"
+    TOP = "Top"
+    BOTTOM = "Bottom"
+    FOOTWEAR = "Footwear"
+    ACCESSORIES = "Accessories"
+    
+    # Abondon old ones
     # Tops
     TSHIRT = "T-Shirt"
     SHIRT = "Shirt"
     POLO = "Polo"
     SWEATER = "Sweater"
     HOODIE = "Hoodie"
-    JACKET = "Jacket"
+    #JACKET = "Jacket"
     COAT = "Coat"
     # Bottoms
     JEANS = "Jeans"
