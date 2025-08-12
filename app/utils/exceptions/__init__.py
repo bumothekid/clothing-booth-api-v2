@@ -26,7 +26,9 @@ from app.utils.exceptions.clothing import (
     ClothingNameTooShortError,
     ClothingNameTooLongError,
     ClothingDescriptionTooLongError,
-    ClothingImageInvalidError
+    ClothingImageInvalidError,
+    ClothingSeasonsInvalidError,
+    ClothingTagsInvalidError
 )
 from app.utils.exceptions.outfits import (
     OutfitIDMissingError,
@@ -79,6 +81,8 @@ __all__ = [
     "ClothingNameTooLongError",
     "ClothingDescriptionTooLongError",
     "ClothingImageInvalidError",
+    "ClothingSeasonsInvalidError",
+    "ClothingTagsInvalidError",
     "OutfitValidationError",
     "OutfitNotFoundError",
     "OutfitIDMissingError",

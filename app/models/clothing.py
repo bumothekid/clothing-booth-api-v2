@@ -57,7 +57,7 @@ class Clothing:
     color: str
     created_at: datetime
     user_id: str
-    image: str
+    image_id: str
     seasons: Optional[list[ClothingSeason]] = None
     tags: Optional[list[ClothingTags]] = None
     description: Optional[str] = None
@@ -79,7 +79,7 @@ class Clothing:
             category=ClothingCategory[core.get("category")],
             created_at=core.get("created_at"),
             user_id=core.get("user_id"),
-            image=core.get("image"),
+            image_id=core.get("image_id"),
             seasons=seasons,
             tags=tags,
             description=core.get("description")

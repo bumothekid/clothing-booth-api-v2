@@ -15,10 +15,10 @@ def generate_image():
     
     file = request.files.get("file", None)
     try:
-        removed_background_url, _ = image_manager.remove_background(file)
+        removed_background_url, image_id = image_manager.remove_background(file)
     except FileTooLargeError as e:
         return jsonify({"error": str(e)}), 413
     except ImageUnclearError as e:
         return jsonify({"error": str(e)}), 422
 
-    return jsonify({"image_url": removed_background_url}), 201
+    return jsonify({"image_url": removed_background_url, "image_id": image_id}), 201

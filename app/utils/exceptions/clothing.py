@@ -35,3 +35,11 @@ class ClothingDescriptionTooLongError(ClothingValidationError):
 class ClothingImageInvalidError(ClothingConflictError):
     def __init__(self, message="Clothing image is invalid"):
         super().__init__(message)
+
+class ClothingSeasonsInvalidError(ClothingValidationError):
+    def __init__(self, message="Clothing seasons are invalid"):
+        super().__init__(message)
+
+class ClothingTagsInvalidError(ClothingValidationError):
+    def __init__(self, message="Clothing tags are invalid"):
+        super().__init__(message)
