@@ -36,12 +36,12 @@ class ImageManager:
             pngImage.seek(0)
             
             try:
-                without_background = bg.remove(pngImage.read(), model_name="u2netp",
+                without_background = bg.remove(pngImage.read(), model_name="u2net",
                                         alpha_matting=True,
-                                        alpha_matting_foreground_threshold=240,
-                                        alpha_matting_background_threshold=10,
-                                        alpha_matting_erode_structure_size=10,
-                                        alpha_matting_base_size=1000,
+                                        alpha_matting_foreground_threshold=220, # 240
+                                        alpha_matting_background_threshold=30, # 10
+                                        alpha_matting_erode_structure_size=5, # 10
+                                        alpha_matting_base_size=320, # 1000
                                         )
             except ValueError as e:
                 raise ImageUnclearError("The provided image does not contain a foreground.")
@@ -52,7 +52,7 @@ class ImageManager:
 
             new_image = Image.open(BytesIO(without_background))
             new_image.save("app/static/temp/" + fileName + ".webp", format="WEBP")
-            return f"https://api.clothing-booth.com/uploads/temp/{fileName}.webp", fileName + ".webp"
+            return f"https://api.clothing-booth.com/uploads/temp/{fileName}.webp", fileName
         except Exception as e:
             logger.error(f"An unexpected error occured while removing the background of an image: {e}")
             logger.error(traceback.format_exc())
@@ -61,6 +61,9 @@ class ImageManager:
     def move_preview_image_to_permanent(self, filename: Optional[str], is_clothing: bool = True) -> str:
         if not filename:
             raise ValueError("Filename cannot be empty.")
+        
+        if not filename.endswith(".webp"):
+            filename = filename + ".webp"
         
         try:
             src = f"app/static/temp/{filename}"

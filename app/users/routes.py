@@ -13,8 +13,8 @@ users = Blueprint("users", __name__)
 @authorize_request
 def get_outfit_list(user_id: str):
     token = request.headers["Authorization"]
-    limit = request.args.get("limit", 1000)
-    offset = request.args.get("offset", 0)
+    limit = request.args.get("limit", 1000, type=int)
+    offset = request.args.get("offset", 0, type=int)
 
     outfit_list = outfit_manager.get_list_of_outfits_by_user_id(token, user_id, limit, offset)
 
@@ -44,8 +44,8 @@ def create_outfit():
 @authorize_request
 def get_clothing_list(user_id: str):
     token = request.headers["Authorization"]
-    limit = request.args.get("limit", 1000)
-    offset = request.args.get("offset", 0)
+    limit = request.args.get("limit", 1000, type=int)
+    offset = request.args.get("offset", 0, type=int)
 
     clothing_list = clothing_manager.get_list_of_clothing_by_user_id(token, user_id, limit, offset)
 
@@ -66,11 +66,12 @@ def create_clothing_piece():
     color = data.get("color", None)
     seasons = data.get("seasons", [])
     tags = data.get("tags", [])
+    image_id = data.get("image_id", None)
     image_url = data.get("image_url", None)
 
-    clothing = clothing_manager.create_clothing(token, name, category, image_url.split("/")[-1] if image_url.endswith(".webp") else image_url.split("/")[-1] + ".webp", color, seasons, tags, description)
+    clothing = clothing_manager.create_clothing(token, name, category, image_id, color, seasons, tags, description)
 
-    return jsonify(clothing.to_dict()), 201
+    return jsonify({"clothing": clothing.to_dict()}), 201
 
 @users.route('/me/username', methods=['PUT'])
 @authorize_request

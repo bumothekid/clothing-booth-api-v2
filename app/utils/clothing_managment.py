@@ -5,7 +5,7 @@ import uuid
 from re import match as re_match
 from datetime import datetime
 from app.utils.database import Database
-from app.utils.exceptions import ClothingNotFoundError, ClothingImageInvalidError, ClothingNameMissingError, ClothingCategoryMissingError, ClothingColorMissingError, ClothingImageMissingError, ClothingNameTooShortError, ClothingNameTooLongError, ClothingDescriptionTooLongError, ClothingIDMissingError
+from app.utils.exceptions import ClothingNotFoundError, ClothingImageInvalidError, ClothingNameMissingError, ClothingCategoryMissingError, ClothingColorMissingError, ClothingImageMissingError, ClothingNameTooShortError, ClothingNameTooLongError, ClothingDescriptionTooLongError, ClothingIDMissingError, ClothingSeasonsInvalidError, ClothingTagsInvalidError, ClothingValidationError
 from typing import Optional
 from mysql.connector.errors import IntegrityError
 from app.models.clothing import Clothing, ClothingCategory, ClothingSeason, ClothingTags
@@ -27,7 +27,7 @@ class ClothingManager:
                             is_public BOOLEAN DEFAULT TRUE,
                             name VARCHAR(50) NOT NULL,
                             category VARCHAR(50) NOT NULL,
-                            image VARCHAR(255) UNIQUE NOT NULL,
+                            image_id VARCHAR(36) UNIQUE NOT NULL,
                             user_id VARCHAR(36) NOT NULL,
                             color CHAR(7) NOT NULL,
                             description VARCHAR(255) DEFAULT NULL,
@@ -55,11 +55,11 @@ class ClothingManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT * FROM clothing WHERE image = %s;", (filename,))
+                cursor.execute("SELECT * FROM clothing WHERE image_id = %s;", (filename,))
                 if cursor.fetchone() is not None:
                     return
             
-            os.remove(filename)
+            os.remove(filename + ".webp")
         except FileNotFoundError:
             pass
         except PermissionError:
@@ -71,21 +71,21 @@ class ClothingManager:
             logger.error(traceback.format_exc())
             raise e
 
-    def create_clothing(self, token: str, name: str, category: str, image_filename: str, color: Optional[str], seasons: Optional[list] = None, tags: Optional[list] = None, description: Optional[str] = None) -> Clothing:
+    def create_clothing(self, token: str, name: str, category: str, image_id: str, color: Optional[str], seasons: Optional[list] = None, tags: Optional[list] = None, description: Optional[str] = None) -> Clothing:
         if not isinstance(name, str) or not name.strip():
             raise ClothingNameMissingError("The name is missing.")
         
         if not isinstance(category, str) or not category.strip():
             raise ClothingCategoryMissingError("The category is missing.")
         
-        if not isinstance(image_filename, str) or not image_filename.strip():
+        if not isinstance(image_id, str) or not image_id.strip():
             raise ClothingImageMissingError("The image filename is missing.")
         
         color_regex = r"^#([A-Fa-f0-9]{6})$"
         if isinstance(color, str) and not re_match(color_regex, color):
             raise ClothingColorMissingError("The color is missing or invalid. It should be a hex color code (e.g., #FFFFFF).")
 
-        if not os.path.exists(os.path.join("app", "static", "temp", image_filename)):
+        if not os.path.exists(os.path.join("app", "static", "temp", image_id + ".webp")):
             raise ClothingImageMissingError("The provided image file does not exist.")
         
         if category.upper() not in ClothingCategory.__members__:
@@ -117,19 +117,19 @@ class ClothingManager:
         user_id = authentication_manager.get_user_id_from_token(token)
         clothing_id = str(uuid.uuid4())
 
-        clothing = Clothing(clothing_id, True, name, ClothingCategory[category.upper()], color, datetime.now(), user_id, image_filename, seasons, tags, description)
+        clothing = Clothing(clothing_id, True, name, ClothingCategory[category.upper()], color, datetime.now(), user_id, image_id, seasons, tags, description)
 
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO clothing(clothing_id, is_public, name, category, image, user_id, color, description) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);", (clothing.clothing_id, clothing.is_public, clothing.name, clothing.category.name, clothing.image, clothing.user_id, clothing.color, clothing.description))
+                cursor.execute("INSERT INTO clothing(clothing_id, is_public, name, category, image_id, user_id, color, description) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);", (clothing.clothing_id, clothing.is_public, clothing.name, clothing.category.name, clothing.image_id, clothing.user_id, clothing.color, clothing.description))
                 for season in clothing.seasons:
                     cursor.execute("INSERT INTO clothing_seasons(clothing_id, season) VALUES (%s, %s);", (clothing.clothing_id, season.name))
                 for tag in clothing.tags:
                     cursor.execute("INSERT INTO clothing_tags(clothing_id, tag) VALUES (%s, %s);", (clothing.clothing_id, tag.name))
                 conn.commit()
 
-                image_manager.move_preview_image_to_permanent(image_filename)
+                image_manager.move_preview_image_to_permanent(image_id)
         except IntegrityError as e:
             raise ClothingImageInvalidError("The provided image is already used by another clothing.")
         except Exception as e:
@@ -147,15 +147,15 @@ class ClothingManager:
         
         try:
             with Database.getConnection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT clothing_id, is_public, name, category, color, created_at, image, user_id, color, description FROM clothing WHERE clothing_id = %s;", (clothing_id,))
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute("SELECT clothing_id, is_public, name, category, color, created_at, image_id, user_id, description FROM clothing WHERE clothing_id = %s;", (clothing_id,))
                 clothing = cursor.fetchone()
                 
                 if clothing is None:
                     raise ClothingNotFoundError("The provided ID does not match any clothing in the database.")
                     
-                if clothing[7] != user_id:
-                    if not clothing[1]:
+                if clothing["user_id"] != user_id:
+                    if not clothing["is_public"]:
                         raise ClothingNotFoundError("The provided ID does not match any clothing in the database for the current user.")
                 
                 cursor.execute("SELECT season FROM clothing_seasons WHERE clothing_id = %s;", (clothing_id,))
@@ -164,9 +164,7 @@ class ClothingManager:
                 cursor.execute("SELECT tag FROM clothing_tags WHERE clothing_id = %s;", (clothing_id,))
                 tags = cursor.fetchall()
                 
-                clothing = Clothing(clothing[0], clothing[1], clothing[2], ClothingCategory[clothing[3]], clothing[4], clothing[5], datetime.fromisoformat(clothing[6]), clothing[7], clothing[8], [ClothingSeason[season[0]] for season in seasons],
-                        [ClothingTags[tag[0]] for tag in tags], clothing[9])
-        
+                clothing = Clothing.from_dict(clothing, [ClothingSeason[season.get("season")] for season in seasons], [ClothingTags[tag.get("tag")] for tag in tags])
         except ClothingNotFoundError as e:
             raise e
         except Exception as e:
@@ -183,29 +181,29 @@ class ClothingManager:
         user_id_from_token = authentication_manager.get_user_id_from_token(token)
         clothes_list: list[Clothing] = []
 
-        statement = f"SELECT clothing_id, is_public, name, category, color, created_at, user_id, image, description FROM clothing WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
+        statement = f"SELECT clothing_id, is_public, name, category, color, created_at, user_id, image_id, description FROM clothing WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
         params = (user_id, )
         
         if user_id != user_id_from_token:
-            statement = f"SELECT clothing_id, is_public, name, category, color, created_at, user_id, image, description FROM clothing WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
+            statement = f"SELECT clothing_id, is_public, name, category, color, created_at, user_id, image_id, description FROM clothing WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
             params = (user_id, True)
         
         try:
             with Database.getConnection() as conn:
-                cursor = conn.cursor()
+                cursor = conn.cursor(dictionary=True)
                 cursor.execute(statement, params)
                 clothes = cursor.fetchall()
 
                 for clothing in clothes:
-                    clothing_id = clothing[0]
+                    clothing_id = clothing.get("clothing_id")
                     cursor.execute("SELECT season FROM clothing_seasons WHERE clothing_id = %s;", (clothing_id,))
                     seasons = cursor.fetchall()
                 
                     cursor.execute("SELECT tag FROM clothing_tags WHERE clothing_id = %s;", (clothing_id,))
                     tags = cursor.fetchall()
 
-                    clothes_list.append(Clothing(clothing[0], clothing[1], clothing[2], ClothingCategory[clothing[3]], clothing[4], clothing[5], datetime.fromisoformat(clothing[6]), clothing[7], clothing[8], [ClothingSeason[season[0]] for season in seasons],
-                        [ClothingTags[tag[0]] for tag in tags], clothing[9]))
+                    clothing = Clothing.from_dict(clothing, [ClothingSeason[season.get("season")] for season in seasons], [ClothingTags[tag.get("tag")] for tag in tags])
+                    clothes_list.append(clothing)
         except Exception as e:
             logger.error(f"An unexpected error occurred while retrieving clothes for user {user_id}: {e}")
             logger.error(f"{traceback.format_exc()}")
@@ -213,69 +211,111 @@ class ClothingManager:
         
         return clothes_list
     
-    """
-    def updateClothing(self, token: str, clothingID: str, name: str | None, category: str | None, description: str | None, color: str | None, seasons: list | None, tags: list | None, image: str | None) -> Clothing:
+    def update_clothing(self, token: str, clothing_id: str, name: Optional[str] = None, category: Optional[str] = None, description: Optional[str] = None, color: Optional[str] = None, seasons: Optional[list[str]] = None, tags: Optional[list[str]] = None, image_id: Optional[str] = None) -> Clothing:
+        user_id = authentication_manager.get_user_id_from_token(token)
+        
+        fields = []
+        values = []
+
         try:
-            userID = authentication_manager.retrieveUserIDByToken(token)
-            
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT image, name, category, description, color FROM clothing WHERE clothing_id = %s AND user_id = %s;", (clothingID, userID,))
-                clothing = cursor.fetchone()
-                
-                if clothing is None:
-                    raise ClothingNotFoundError("The provided clothing ID does not match any clothing in the database.")
-                
-                if image is None:
-                    image = clothing[0].split("/")[-1]
-                
-                if name is None:
-                    name = clothing[1]
-                
-                if category is None:
-                    category = clothing[2]
+                cursor.execute("SELECT clothing_id, name, created_at, user_id, description, category, color, image_id  FROM clothing WHERE clothing_id = %s AND user_id = %s;", (clothing_id, user_id))
+                result = cursor.fetchone()
+
+                if result is None:
+                    raise ClothingNotFoundError("The provided ID does not match any clothing in the database for the current user.")
+
+                if isinstance(name, str):
+                    if len(name) < 3:
+                        raise ClothingNameTooShortError("The provided name is too short, it has to be at least 3 characters long.")
                     
-                if description is None:
-                    description = clothing[3]
+                    if len(name) > 50:
+                        raise ClothingNameTooLongError("The provided name is too long, it has to be at most 50 characters long.")
                     
-                if color is None:
-                    color = clothing[4]
+                    if name != result[2]:
+                        fields.append("name = %s")
+                        values.append(name)
+                        
+                color_regex = r"^#([A-Fa-f0-9]{6})$"
+                if isinstance(color, str):
+                    if not re_match(color_regex, color):
+                        raise ClothingColorMissingError("The color is missing or invalid. It should be a hex color code (e.g., #FFFFFF).")
                     
-                if name == "":
-                    raise ClothingNameTooShortError("The provided name is too short.")
-                
-                if len(name) > 50:
-                    raise ClothingNameTooLongError("The provided name is too long.")
-                
-                if description is not None and len(description) > 255:
-                    raise ClothingDescriptionTooLongError("The provided description is too long.")
-                
-                if description == "":
-                    description = None
-                
-                cursor.execute("UPDATE clothing SET name = %s, category = %s, description = %s, color = %s, image = %s WHERE clothing_id = %s AND user_id = %s;", (name, category, description, color, "/public/clothing_images/" + image, clothingID, userID,))
-                
-                if seasons is not None:
-                    cursor.execute("DELETE FROM clothing_seasons WHERE clothing_id = %s;", (clothingID,))
-                    for season in seasons:
-                        cursor.execute("INSERT INTO clothing_seasons(clothing_id, season) VALUES (%s, %s);", (clothingID, season))
-                
-                if tags is not None:
-                    cursor.execute("DELETE FROM clothing_tags WHERE clothing_id = %s;", (clothingID,))
-                    for tag in tags:
-                        cursor.execute("INSERT INTO clothing_tags(clothing_id, tag) VALUES (%s, %s);", (clothingID, tag))
+                    fields.append("color = %s")
+                    values.append(color)
+
+                if isinstance(image_id, str):
+                    if not os.path.exists(os.path.join("app", "static", "temp", image_id + ".webp")):
+                        raise ClothingImageMissingError("The provided image file does not exist.")
+                    
+                    self._delete_unused_image(image_id)
+                    fields.append("image_id = %s")
+                    values.append(image_id)
+                    image_manager.move_preview_image_to_permanent(image_id)
+
+                if isinstance(category, str):
+                    if category.upper() not in ClothingCategory.__members__:
+                        raise ClothingCategoryMissingError("The provided category is not valid. It should be one of the following: " + ", ".join(ClothingCategory.__members__.keys()))
+                    
+                    fields.append("category = %s")
+                    values.append(category.upper())
+
+                if description is not None and description != result[4]:
+                    if len(description) > 255:
+                        raise ClothingDescriptionTooLongError("The provided description is too long.")
+                    
+                    fields.append("description = %s")
+                    values.append(description)
+
+                if fields:
+                    cursor.execute(f"UPDATE clothing SET {', '.join(fields)} WHERE clothing_id = %s;", (*values, clothing_id))
+
+                cursor.execute("SELECT season FROM clothing_seasons WHERE clothing_id = %s;", (clothing_id,))
+                existing_seasons: list[str] = [season[0] for season in cursor.fetchall()]
+
+                if seasons is not None and seasons != existing_seasons:
+                    new_seasons = [season for season in seasons if season not in existing_seasons]
+                    old_seasons = [season for season in existing_seasons if season not in seasons]
+                    
+                    if old_seasons:
+                        placeholders = ", ".join(["%s"] * len(old_seasons))
+                        cursor.execute(f"DELETE FROM clothing_seasons WHERE clothing_id = %s AND season IN ({placeholders});", (clothing_id, *old_seasons))
+
+                    if new_seasons:
+                        for season in new_seasons:
+                            if season.strip().upper() not in ClothingSeason.__members__:
+                                raise ClothingSeasonsInvalidError(f"The provided season ({season}) is not valid.")
+
+                            cursor.execute("INSERT INTO clothing_seasons(clothing_id, season) VALUES (%s, %s);", (clothing_id, season.strip().upper()))
+
+                cursor.execute("SELECT tag FROM clothing_tags WHERE clothing_id = %s;", (clothing_id,))
+                existing_tags: list[str] = [tag[0] for tag in cursor.fetchall()]
+
+                if tags is not None and tags != existing_tags:
+                    new_tags = [tag for tag in tags if tag not in existing_tags]
+                    old_tags = [tag for tag in existing_tags if tag not in tags]
+                    
+                    if old_tags:
+                        placeholders = ", ".join(["%s"] * len(old_tags))
+                        cursor.execute(f"DELETE FROM clothing_tags WHERE clothing_id = %s AND tag IN ({placeholders});", (clothing_id, *old_tags))
+
+                    if new_tags:
+                        for tag in new_tags:
+                            if tag.strip().upper() not in ClothingTags.__members__:
+                                raise ClothingTagsInvalidError(f"The provided tag ({tag}) is not valid.")
+
+                            cursor.execute("INSERT INTO clothing_tags(clothing_id, tag) VALUES (%s, %s);", (clothing_id, tag.strip().upper()))
+                            
                 conn.commit()
-                
-            self.deleteImageIfNotUsed(clothing[0])
-        except ClothingNotFoundError as e:
+        except (ClothingValidationError, ClothingNotFoundError) as e:
             raise e
         except Exception as e:
-            logger.error(f"An unexpected error occured: {e}")
+            logger.error(f"An unexpected error occurred while updating clothing with ID {clothing_id}: {e}")
             logger.error(traceback.format_exc())
             raise e
         
-        return self.getClothing(token, clothingID)
-    """
+        return self.get_clothing_by_id(token, clothing_id)
     
     def delete_clothing_by_id(self, token: str, clothing_id: str) -> None:
         if not isinstance(clothing_id, str) or not clothing_id.strip():
@@ -286,10 +326,10 @@ class ClothingManager:
         try:    
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT image FROM clothing WHERE clothing_id = %s AND user_id = %s;", (clothing_id, user_id,))
-                image = cursor.fetchone()
+                cursor.execute("SELECT image_id FROM clothing WHERE clothing_id = %s AND user_id = %s;", (clothing_id, user_id,))
+                image_id = cursor.fetchone()
                 
-                if image is None:
+                if image_id is None:
                     raise ClothingNotFoundError("The provided clothing ID does not match any clothing in the database.")
                 
                 cursor.execute("DELETE FROM clothing_tags WHERE clothing_id = %s;", (clothing_id,))
@@ -297,7 +337,7 @@ class ClothingManager:
                 cursor.execute("DELETE FROM clothing WHERE clothing_id = %s AND user_id = %s;", (clothing_id, user_id,))
                 conn.commit()
                 
-            self._delete_unused_image(image[0])
+            self._delete_unused_image(image_id[0])
         except ClothingNotFoundError as e:
             raise e
         except Exception as e:

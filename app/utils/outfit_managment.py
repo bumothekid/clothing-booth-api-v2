@@ -18,7 +18,7 @@ class OutfitManager:
         with Database.getConnection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                            CREATE TABLE IF NOT EXISTS outfit(
+                            CREATE TABLE IF NOT EXISTS outfits(
                             outfit_id VARCHAR(36) PRIMARY KEY,
                             is_public BOOLEAN DEFAULT TRUE,
                             name VARCHAR(50) NOT NULL,
@@ -33,21 +33,21 @@ class OutfitManager:
                             CREATE TABLE IF NOT EXISTS outfit_seasons(
                             outfit_id VARCHAR(36) NOT NULL,
                             season ENUM('SPRING', 'SUMMER', 'AUTUMN', 'WINTER') NOT NULL,
-                            FOREIGN KEY (outfit_id) REFERENCES outfit(outfit_id) ON DELETE CASCADE
+                            FOREIGN KEY (outfit_id) REFERENCES outfits(outfit_id) ON DELETE CASCADE
                             );
                             """)
             cursor.execute("""
                             CREATE TABLE IF NOT EXISTS outfit_tags(
                             outfit_id VARCHAR(36) NOT NULL,
                             tag VARCHAR(50) NOT NULL,
-                            FOREIGN KEY (outfit_id) REFERENCES outfit(outfit_id) ON DELETE CASCADE
+                            FOREIGN KEY (outfit_id) REFERENCES outfits(outfit_id) ON DELETE CASCADE
                             );
                             """)
             cursor.execute("""
                             CREATE TABLE IF NOT EXISTS outfit_clothing(
                             outfit_id VARCHAR(36) NOT NULL,
                             clothing_id VARCHAR(36) NOT NULL,
-                            FOREIGN KEY (outfit_id) REFERENCES outfit(outfit_id) ON DELETE CASCADE,
+                            FOREIGN KEY (outfit_id) REFERENCES outfits(outfit_id) ON DELETE CASCADE,
                             FOREIGN KEY (clothing_id) REFERENCES clothing(clothing_id) ON DELETE CASCADE
                             );
                             """)
@@ -107,7 +107,7 @@ class OutfitManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO outfit(outfit_id, is_public, is_favorite, name, user_id, description) VALUES (%s, %s, %s, %s, %s, %s);", (outfit.outfit_id, outfit.is_public, outfit.is_favorite, outfit.name, outfit.user_id, outfit.description))
+                cursor.execute("INSERT INTO outfits(outfit_id, is_public, is_favorite, name, user_id, description) VALUES (%s, %s, %s, %s, %s, %s);", (outfit.outfit_id, outfit.is_public, outfit.is_favorite, outfit.name, outfit.user_id, outfit.description))
                 if outfit.seasons:
                     for season in outfit.seasons:
                         cursor.execute("INSERT INTO outfit_seasons(outfit_id, season) VALUES (%s, %s);", (outfit.outfit_id, season.name))
@@ -132,8 +132,8 @@ class OutfitManager:
         
         try:
             with Database.getConnection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, description FROM outfit WHERE outfit_id = %s", (outfit_id, ))
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute("SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, description FROM outfits WHERE outfit_id = %s", (outfit_id, ))
                 outfit = cursor.fetchone()
                 
                 if outfit is None:
@@ -152,7 +152,7 @@ class OutfitManager:
                 cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit_id,))
                 clothing_list = cursor.fetchall()
 
-                outfit = Outfit(outfit[0], outfit[1], outfit[2], outfit[3], outfit[4], outfit[5], [clothing_id[0] for clothing_id in clothing_list], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags], outfit[6])
+                outfit = Outfit.from_dict(outfit, [clothing_id[0] for clothing_id in clothing_list], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags])
         except OutfitNotFoundError as e:
             raise e
         except OutfitPermissionError as e:
@@ -178,31 +178,31 @@ class OutfitManager:
         
         outfit_list: list[Outfit] = []
 
-        statement = f"SELECT outfit_id, is_public, is_favorite, name, user_id, description, created_at FROM clothing WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
+        statement = f"SELECT outfit_id, is_public, is_favorite, name, user_id, description, created_at FROM outfits WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
         params = (user_id, )
         
         if user_id != user_id_from_token:
-            statement = f"SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, description FROM clothing WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
+            statement = f"SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, description FROM outfits WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
             params = (user_id, True, )
         
         try:
             with Database.getConnection() as conn:
-                cursor = conn.cursor()
+                cursor = conn.cursor(dictionary=True)
                 cursor.execute(statement, params)
 
                 outfits = cursor.fetchall()
                 
                 for outfit in outfits:
-                    cursor.execute("SELECT season FROM outfit_seasons WHERE outfit_id = %s;", (outfit[0],))
+                    cursor.execute("SELECT season FROM outfit_seasons WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
                     seasons = cursor.fetchall()
                     
-                    cursor.execute("SELECT tag FROM outfit_tags WHERE outfit_id = %s;", (outfit[0],))
+                    cursor.execute("SELECT tag FROM outfit_tags WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
                     tags = cursor.fetchall()
                     
-                    cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit[0],))
+                    cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
                     clothing_list = cursor.fetchall()
                     
-                    outfit_instance = Outfit(outfit[0], outfit[1], outfit[2], outfit[3], outfit[4], outfit[5], [clothing_id[0] for clothing_id in clothing_list], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags], outfit[6])
+                    outfit_instance = Outfit.from_dict(outfit, [clothing_id.get("clothing_id") for clothing_id in clothing_list], [OutfitSeason[season.get("season")] for season in seasons], [OutfitTags[tag.get("tag")] for tag in tags])
                     outfit_list.append(outfit_instance)
         except Exception as e:
             logger.error(f"An unexpected error occurred while retrieving outfits for user {user_id}: {e}")
@@ -220,7 +220,7 @@ class OutfitManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT outfit_id, is_public, name, created_at, user_id, description FROM outfit WHERE outfit_id = %s AND user_id = %s;", (outfit_id, user_id))
+                cursor.execute("SELECT outfit_id, is_public, name, created_at, user_id, description FROM outfits WHERE outfit_id = %s AND user_id = %s;", (outfit_id, user_id))
                 result = cursor.fetchone()
 
                 if result is None:
@@ -249,7 +249,7 @@ class OutfitManager:
                     values.append(description)
 
                 if fields:
-                    cursor.execute(f"UPDATE outfit SET {', '.join(fields)} WHERE outfit_id = %s;", (*values, outfit_id))
+                    cursor.execute(f"UPDATE outfits SET {', '.join(fields)} WHERE outfit_id = %s;", (*values, outfit_id))
 
                 cursor.execute("SELECT season FROM outfit_seasons WHERE outfit_id = %s;", (outfit_id,))
                 existing_seasons: list[str] = [season[0] for season in cursor.fetchall()]
@@ -310,6 +310,8 @@ class OutfitManager:
             logger.error(f"An unexpected error occurred while updating outfit with ID {outfit_id}: {e}")
             logger.error(traceback.format_exc())
             raise e
+        
+        return self.get_outfit_by_id(token, outfit_id)
 
     def delete_outfit_by_id(self, token: str, outfit_id: Optional[str]) -> None:
         if not isinstance(outfit_id, str) or not outfit_id.strip():
@@ -320,7 +322,7 @@ class OutfitManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT user_id FROM outfit WHERE outfit_id = %s AND user_id = %s;", (outfit_id, user_id))
+                cursor.execute("SELECT user_id FROM outfits WHERE outfit_id = %s AND user_id = %s;", (outfit_id, user_id))
                 result = cursor.fetchone()
 
                 if result is None:
@@ -329,7 +331,7 @@ class OutfitManager:
                 cursor.execute("DELETE FROM outfit_seasons WHERE outfit_id = %s;", (outfit_id,))
                 cursor.execute("DELETE FROM outfit_tags WHERE outfit_id = %s;", (outfit_id,))
                 cursor.execute("DELETE FROM outfit_clothing WHERE outfit_id = %s;", (outfit_id,))
-                cursor.execute("DELETE FROM outfit WHERE outfit_id = %s;", (outfit_id,))
+                cursor.execute("DELETE FROM outfits WHERE outfit_id = %s;", (outfit_id,))
                 conn.commit()
         except OutfitNotFoundError as e:
             raise e

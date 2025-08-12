@@ -12,7 +12,7 @@ def get_outfit(outfit_id: str):
     token = request.headers["Authorization"]
     outfit = outfit_manager.get_outfit_by_id(outfit_id, token)
 
-    return jsonify(outfit.to_dict()), 200
+    return jsonify({"outfit": outfit.to_dict()}), 200
 
 @outfits.route('/<outfit_id>', methods=['DELETE'])
 @limiter.limit('5 per minute')
