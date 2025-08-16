@@ -86,4 +86,40 @@ class ImageManager:
             
     # ! DELETION of old temp images
     
+    def generate_outfit_collage(self, item_images: list[str]) -> tuple:
+        size = (500, 500)
+        collage = Image.new("RGBA", size, (255, 255, 255, 0))
+        from math import ceil, sqrt
+
+        num_items = len(item_images[:4])
+        
+        if num_items == 2:
+            cell_size = (size[0] // 2, size[1] // 2)
+            grid = [(cell_size[0] // 2, 0), (cell_size[0] // 2, cell_size[1] - 30)]
+        elif num_items == 3:
+            cell_size = (size[0] // 2, size[1] // 2)
+            grid = [(0, 0), (cell_size[0], 0), (size[0]//4, cell_size[1])]
+        else:
+            cell_size = (size[0] // 2, size[1] // 2)
+            grid = [(0, 0), (cell_size[0], 0), (0, cell_size[1]), (cell_size[0], cell_size[1])]
+
+        for idx, img_id in enumerate(item_images[:4]):
+            img = Image.open("app/static/clothing_images/" + img_id + ".webp").convert("RGBA")
+            img.thumbnail(cell_size, Image.ANTIALIAS)
+
+            offset_x = (cell_size[0] - img.width) // 2
+            offset_y = (cell_size[1] - img.height) // 2
+
+            paste_x = grid[idx][0] + offset_x
+            paste_y = grid[idx][1] + offset_y
+
+            collage.paste(img, (paste_x, paste_y), img)
+
+            
+        filename = str(uuid.uuid4())
+
+        collage.save("app/static/outfit_collages/" + filename + ".webp", "WEBP")
+        
+        return f"https://api.clothing-booth.com/uploads/outfit_collages/{filename}.webp", filename
+    
 image_manager = ImageManager()
