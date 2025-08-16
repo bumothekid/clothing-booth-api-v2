@@ -29,19 +29,18 @@ class ImageManager:
             
             image = Image.open(file)
             image = image.convert("RGBA")
-            image.thumbnail((512, 512))
             
             pngImage = BytesIO()
             image.save(pngImage, format="PNG")
             pngImage.seek(0)
             
             try:
-                without_background = bg.remove(pngImage.read(), model_name="u2net",
+                without_background = bg.remove(pngImage.read(), model_name="u2net_cloth_segm",
                                         alpha_matting=True,
-                                        alpha_matting_foreground_threshold=220, # 240
-                                        alpha_matting_background_threshold=30, # 10
-                                        alpha_matting_erode_structure_size=5, # 10
-                                        alpha_matting_base_size=320, # 1000
+                                        alpha_matting_foreground_threshold=200, # 240
+                                        alpha_matting_background_threshold=10, #30 # 10
+                                        alpha_matting_erode_structure_size=13, #5 # 10
+                                        alpha_matting_base_size=512, # 1000
                                         )
             except ValueError as e:
                 raise ImageUnclearError("The provided image does not contain a foreground.")
@@ -51,7 +50,13 @@ class ImageManager:
                 raise e
 
             new_image = Image.open(BytesIO(without_background))
-            new_image.save("app/static/temp/" + fileName + ".webp", format="WEBP")
+            
+            alpha = new_image.getchannel("A")
+            bbox = alpha.getbbox()
+            
+            cropped_image = new_image.crop(bbox)
+            cropped_image.save("app/static/temp/" + fileName + ".webp", format="WEBP")
+            
             return f"https://api.clothing-booth.com/uploads/temp/{fileName}.webp", fileName
         except Exception as e:
             logger.error(f"An unexpected error occured while removing the background of an image: {e}")
