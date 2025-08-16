@@ -9,6 +9,7 @@ from typing import Optional
 from mysql.connector.errors import IntegrityError
 from app.models.outfit import Outfit, OutfitTags, OutfitSeason
 from app.utils.authentication_managment import authentication_manager
+from app.utils.image_managment import image_manager
 from app.utils.logging import get_logger
 
 logger = get_logger()
@@ -24,6 +25,7 @@ class OutfitManager:
                             name VARCHAR(50) NOT NULL,
                             is_favorite BOOLEAN DEFAULT FALSE,
                             user_id VARCHAR(36) NOT NULL,
+                            image_id VARCHAR(36) NOT NULL,
                             description VARCHAR(255) DEFAULT NULL,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
@@ -93,16 +95,23 @@ class OutfitManager:
         outfit_id = str(uuid.uuid4())
         
         valid_clothing_ids = []
-        for clothing_id in set(clothing_ids):
+        valid_clothing_image_ids = []
+        for clothing_id in clothing_ids:
+            if clothing_id in set(valid_clothing_ids):
+                return
+            
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT clothing_id FROM clothing WHERE clothing_id = %s AND user_id = %s;", (clothing_id, user_id))
-                if cursor.fetchone() is None:
+                cursor.execute("SELECT image_id FROM clothing WHERE clothing_id = %s AND user_id = %s;", (clothing_id, user_id))
+                image_id = cursor.fetchone()
+                if image_id is None:
                     raise OutfitClothingIDInvalidError(f"The provided clothing ID ({clothing_id}) is invalid or does not belong to the user.")
 
             valid_clothing_ids.append(clothing_id)
+            valid_clothing_image_ids.append(image_id[0])
 
-        outfit = Outfit(outfit_id, True, False, name, datetime.now(), user_id, valid_clothing_ids, seasons, tags, description)
+        _, image_id = image_manager.generate_outfit_collage(valid_clothing_image_ids)
+        outfit = Outfit(outfit_id, True, False, name, datetime.now(), user_id, valid_clothing_ids, image_id, seasons, tags, description)
 
         try:
             with Database.getConnection() as conn:
@@ -133,7 +142,7 @@ class OutfitManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                cursor.execute("SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, description FROM outfits WHERE outfit_id = %s", (outfit_id, ))
+                cursor.execute("SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, image_id, description FROM outfits WHERE outfit_id = %s", (outfit_id, ))
                 outfit = cursor.fetchone()
                 
                 if outfit is None:
@@ -178,11 +187,11 @@ class OutfitManager:
         
         outfit_list: list[Outfit] = []
 
-        statement = f"SELECT outfit_id, is_public, is_favorite, name, user_id, description, created_at FROM outfits WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
+        statement = f"SELECT outfit_id, is_public, is_favorite, name, user_id, description, image_id, created_at FROM outfits WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
         params = (user_id, )
         
         if user_id != user_id_from_token:
-            statement = f"SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, description FROM outfits WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
+            statement = f"SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, image_id, description FROM outfits WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
             params = (user_id, True, )
         
         try:

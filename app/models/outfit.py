@@ -28,6 +28,7 @@ class Outfit:
     created_at: datetime
     user_id: str
     clothing_ids: list[str]
+    image_id: str
     seasons: Optional[list[OutfitSeason]] = None
     tags: Optional[list[OutfitTags]] = None
     description: Optional[str] = None
