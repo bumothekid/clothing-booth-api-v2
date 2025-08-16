@@ -87,7 +87,7 @@ def initialize_database():
     logger.debug("Database initialized successfully.")
 
 def prepare_static_directories():
-    static_dirs = ["app/static/clothing_images", "app/static/profile_pictures", "app/static/temp"]
+    static_dirs = ["app/static/clothing_images", "app/static/profile_pictures", "app/static/temp", "app/static/outfit_collages"]
     for directory in static_dirs:
         if not os.path.exists(directory):
             try:
