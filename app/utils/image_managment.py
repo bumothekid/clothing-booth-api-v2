@@ -89,7 +89,6 @@ class ImageManager:
     def generate_outfit_collage(self, item_images: list[str]) -> tuple:
         size = (500, 500)
         collage = Image.new("RGBA", size, (255, 255, 255, 0))
-        from math import ceil, sqrt
 
         num_items = len(item_images[:4])
         
@@ -117,8 +116,12 @@ class ImageManager:
 
             
         filename = str(uuid.uuid4())
-
-        collage.save("app/static/outfit_collages/" + filename + ".webp", "WEBP")
+            
+        alpha = collage.getchannel("A")
+        bbox = alpha.getbbox()
+            
+        cropped_image = collage.crop(bbox)
+        cropped_image.save("app/static/outfit_collages/" + filename + ".webp", "WEBP")
         
         return f"https://api.clothing-booth.com/uploads/outfit_collages/{filename}.webp", filename
     
