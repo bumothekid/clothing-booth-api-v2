@@ -49,6 +49,7 @@ class Outfit:
             name=core.get("name"),
             created_at=core.get("created_at"),
             user_id=core.get("user_id"),
+            image_id=core.get("image_id"),
             clothing_ids=clothing_ids,
             seasons=seasons,
             tags=tags,
