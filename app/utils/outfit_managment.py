@@ -116,7 +116,7 @@ class OutfitManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO outfits(outfit_id, is_public, is_favorite, name, user_id, description) VALUES (%s, %s, %s, %s, %s, %s);", (outfit.outfit_id, outfit.is_public, outfit.is_favorite, outfit.name, outfit.user_id, outfit.description))
+                cursor.execute("INSERT INTO outfits(outfit_id, is_public, is_favorite, name, user_id, image_id, description) VALUES (%s, %s, %s, %s, %s, %s, %s);", (outfit.outfit_id, outfit.is_public, outfit.is_favorite, outfit.name, outfit.user_id, outfit.image_id, outfit.description))
                 if outfit.seasons:
                     for season in outfit.seasons:
                         cursor.execute("INSERT INTO outfit_seasons(outfit_id, season) VALUES (%s, %s);", (outfit.outfit_id, season.name))
