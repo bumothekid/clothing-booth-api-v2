@@ -51,6 +51,17 @@ def getTempImage(filename):
         logger.error(f"An unexpected error occurred: {e}")
         return jsonify({"error": f"An unexpected error occurred: {e}"}), 500
 
+@uploads.get('/outfit_images/<filename>')
+@limiter.limit("10 per minute")
+def get_outfit_image(filename):
+    filename = filename.strip() + ".webp" if not filename.endswith(".webp") else filename
+
+    try:
+        return send_from_directory('app/static/outfit_collages', f'{filename}')
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        return jsonify({"error": f"An unexpected error occurred: {e}"}), 500
+
 @uploads.get('/openapi.yaml')
 def get_openapi_spec():
     return send_from_directory('app/static', 'openapi.yaml')
