@@ -32,7 +32,6 @@ def prepare_api():
     limiter.init_app(api)
 
     prepare_static_directories()
-    prepare_logs_directory()
     initialize_database()
     register_blueprints()
     logger.debug("API prepared successfully.")
@@ -97,19 +96,8 @@ def prepare_static_directories():
             else:
                 logger.warning(f"New {directory} directory created.")
 
-def prepare_logs_directory():
-    if not os.path.exists("logs"):
-        try:
-            os.makedirs("logs", exist_ok=True)
-        except OSError as e:
-            logger.critical(f"Error creating logs directory: {e}")
-        else:
-            logger.info("New logs directory created.")
-
-if __name__ == '__main__':
+if __name__ != '__main__':
     prepare_api()
-    logger.info("-- 🚀 Started API in debug mode --")
-    api.run(host="0.0.0.0", debug=True, port=8000)
+    logger.info("-- 🚀 Started API --")
 else:
-    prepare_api()
-    logger.info("-- 🚀 Started API in production mode --")
+    logger.warning("-- ⚠️ API HAS TO BE STARTED THROUGH GUNICORN --")
