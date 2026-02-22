@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, Response
+from flask import Blueprint, request, jsonify, Response, json
 from ..utils.user_managment import user_manager
 from app.utils.outfit_managment import outfit_manager
 from app.utils.clothing_managment import clothing_manager
@@ -25,17 +25,31 @@ def get_outfit_list(user_id: str):
 @authorize_request
 def create_outfit():
     token = request.headers['Authorization']
-    data = request.get_json()
-    
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-    
-    name = data.get("name", None)
-    description = data.get("description", None)
-    clothing_ids = data.get("clothing_ids", None)
-    seasons = data.get("seasons", None)
-    tags = data.get("tags", None)
-    outfit = outfit_manager.create_outfit(token, name, clothing_ids, seasons, tags, description)
+
+    payload_raw = request.form.get("payload")
+    preview_file = request.files.get("preview_image")
+
+    if not payload_raw:
+        return jsonify({"error": "Missing payload"}), 400
+    if not preview_file:
+        return jsonify({"error": "Missing preview file"}), 400
+
+    try:
+        data = json.loads(payload_raw)
+    except Exception:
+        return jsonify({"error": "Invalid payload JSON"}), 400
+
+    outfit = outfit_manager.create_outfit(
+        token=token,
+        name=data.get("name"),
+        description=data.get("description"),
+        scene=data.get("scene"),
+        seasons=data.get("seasons"),
+        tags=data.get("tags"),
+        is_public=data.get("is_public"),
+        is_favorite=data.get("is_favorite"),
+        preview_file=preview_file,
+    )
 
     return jsonify({"outfit": outfit.to_dict()}), 201
 
