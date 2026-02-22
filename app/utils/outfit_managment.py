@@ -2,9 +2,10 @@ __all__ = ["outfit_manager"]
 
 import traceback
 import uuid
+import json
 from datetime import datetime
 from app.utils.database import Database
-from app.utils.exceptions import OutfitNotFoundError, OutfitNameTooShortError, OutfitNameTooLongError, OutfitDescriptionTooLongError, OutfitNameMissingError, OutfitClothingIDsMissingError, OutfitClothingIDInvalidError, OutfitSeasonsInvalidError, OutfitTagsInvalidError, OutfitIDMissingError, OutfitPermissionError, OutfitLimitInvalidError, OutfitOffsetInvalidError, OutfitValidationError
+from app.utils.exceptions import OutfitNotFoundError, OutfitNameTooShortError, OutfitNameTooLongError, OutfitDescriptionTooLongError, OutfitNameMissingError, OutfitClothingIDsMissingError, OutfitClothingIDInvalidError, OutfitSeasonsInvalidError, OutfitTagsInvalidError, OutfitIDMissingError, OutfitPermissionError, OutfitLimitInvalidError, OutfitOffsetInvalidError, OutfitValidationError, OutfitPublicMissingError, OutfitFavoriteMissingError, OutfitSceneMissingError, OutfitSceneInvalidError, OutfitPreviewInvalidError
 from typing import Optional
 from mysql.connector.errors import IntegrityError
 from app.models.outfit import Outfit, OutfitTags, OutfitSeason
@@ -26,8 +27,10 @@ class OutfitManager:
                             is_favorite BOOLEAN DEFAULT FALSE,
                             user_id VARCHAR(36) NOT NULL,
                             image_id VARCHAR(36) NOT NULL,
+                            scene_json JSON NOT NULL,
                             description VARCHAR(255) DEFAULT NULL,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                             FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
                             );
                             """)
@@ -35,27 +38,32 @@ class OutfitManager:
                             CREATE TABLE IF NOT EXISTS outfit_seasons(
                             outfit_id VARCHAR(36) NOT NULL,
                             season ENUM('SPRING', 'SUMMER', 'AUTUMN', 'WINTER') NOT NULL,
+                            PRIMARY KEY (outfit_id, season),
                             FOREIGN KEY (outfit_id) REFERENCES outfits(outfit_id) ON DELETE CASCADE
                             );
                             """)
             cursor.execute("""
-                            CREATE TABLE IF NOT EXISTS outfit_tags(
-                            outfit_id VARCHAR(36) NOT NULL,
-                            tag VARCHAR(50) NOT NULL,
-                            FOREIGN KEY (outfit_id) REFERENCES outfits(outfit_id) ON DELETE CASCADE
+                            CREATE TABLE IF NOT EXISTS outfit_tags (
+                                outfit_id VARCHAR(36) NOT NULL,
+                                tag VARCHAR(50) NOT NULL,
+                                PRIMARY KEY (outfit_id, tag),
+                                INDEX (tag),
+                                FOREIGN KEY (outfit_id) REFERENCES outfits(outfit_id) ON DELETE CASCADE
                             );
                             """)
             cursor.execute("""
-                            CREATE TABLE IF NOT EXISTS outfit_clothing(
-                            outfit_id VARCHAR(36) NOT NULL,
-                            clothing_id VARCHAR(36) NOT NULL,
-                            FOREIGN KEY (outfit_id) REFERENCES outfits(outfit_id) ON DELETE CASCADE,
-                            FOREIGN KEY (clothing_id) REFERENCES clothing(clothing_id) ON DELETE CASCADE
+                            CREATE TABLE IF NOT EXISTS outfit_clothing (
+                                outfit_id VARCHAR(36) NOT NULL,
+                                clothing_id VARCHAR(36) NOT NULL,
+                                PRIMARY KEY (outfit_id, clothing_id),
+                                INDEX (clothing_id),
+                                FOREIGN KEY (outfit_id) REFERENCES outfits(outfit_id) ON DELETE CASCADE,
+                                FOREIGN KEY (clothing_id) REFERENCES clothing(clothing_id) ON DELETE CASCADE
                             );
                             """)
             conn.commit()
 
-    def create_outfit(self, token: str, name: str, clothing_ids: Optional[list[str]], seasons: Optional[list[str]], tags: Optional[list[str]], description: Optional[str] = None) -> Outfit:
+    def create_outfit(self, token: str, name: str, scene: dict, seasons: Optional[list[str]], tags: Optional[list[str]], is_public: bool, is_favorite: bool, preview_file, description: Optional[str] = None) -> Outfit:
         if not isinstance(name, str) or not name.strip():
             raise OutfitNameMissingError("The provided name is missing or invalid.")
         
@@ -87,49 +95,95 @@ class OutfitManager:
                     raise OutfitTagsInvalidError(f"The provided tag ({tag}) is not valid.")
 
             tags = [OutfitTags[tag.strip().upper()] for tag in tags]
+            
+        if not isinstance(is_public, bool):
+            raise OutfitPublicMissingError("The is_public is missing.")
+            
+        if not isinstance(is_favorite, bool):
+            raise OutfitFavoriteMissingError("The is_favorite is missing.")
 
         if isinstance(description, str) and len(description) > 255:
             raise OutfitDescriptionTooLongError("The provided description is too long, it has to be at most 255 characters long.")
 
+        if not isinstance(scene, dict):
+            raise OutfitSceneMissingError("scene is missing or invalid.")
+        items = scene.get("items")
+        if not isinstance(items, list) or len(items) < 2:
+            raise OutfitSceneInvalidError("scene.items must contain at least 2 items.")
+
+        clothing_ids = []
+        for it in items:
+            cid = it.get("clothing_id")
+            if not isinstance(cid, str) or not cid.strip():
+                raise OutfitSceneInvalidError("scene item clothing_id missing.")
+            clothing_ids.append(cid)
+
+            for key in ("x", "y", "scale", "rotation", "z"):
+                if key not in it:
+                    raise OutfitSceneInvalidError(f"scene item missing '{key}'.")
+
+        if len(set(clothing_ids)) != len(clothing_ids):
+            raise OutfitSceneInvalidError("duplicate clothing_ids in scene are not allowed.")
+
         user_id = authentication_manager.get_user_id_from_token(token)
         outfit_id = str(uuid.uuid4())
-        
-        valid_clothing_ids = []
-        valid_clothing_image_ids = []
-        for clothing_id in clothing_ids:
-            if clothing_id in set(valid_clothing_ids):
-                return
-            
+
+        for cid in clothing_ids:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT image_id FROM clothing WHERE clothing_id = %s AND user_id = %s;", (clothing_id, user_id))
-                image_id = cursor.fetchone()
-                if image_id is None:
-                    raise OutfitClothingIDInvalidError(f"The provided clothing ID ({clothing_id}) is invalid or does not belong to the user.")
+                cursor.execute(
+                    "SELECT 1 FROM clothing WHERE clothing_id = %s AND user_id = %s;",
+                    (cid, user_id)
+                )
+                if cursor.fetchone() is None:
+                    raise OutfitClothingIDInvalidError(f"Clothing ID {cid} invalid or not owned by user.")
 
-            valid_clothing_ids.append(clothing_id)
-            valid_clothing_image_ids.append(image_id[0])
+        ct = (preview_file.mimetype or "").lower()
+        if ct not in ("image/png", "image/webp", "image/jpeg"):
+            raise OutfitPreviewInvalidError("preview must be png, webp, or jpeg.")
 
-        _, image_id = image_manager.generate_outfit_collage(valid_clothing_image_ids)
-        outfit = Outfit(outfit_id, True, False, name, datetime.now(), user_id, valid_clothing_ids, image_id, seasons, tags, description)
+        image_id = image_manager.save_outfit_preview(outfit_id, preview_file)
+
+        outfit = Outfit(
+            outfit_id=outfit_id,
+            is_public=is_public,
+            is_favorite=is_favorite,
+            name=name,
+            created_at=datetime.now(),
+            user_id=user_id,
+            clothing_ids=clothing_ids,
+            image_id=image_id,
+            seasons=seasons,
+            tags=tags,
+            description=description
+        )
 
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO outfits(outfit_id, is_public, is_favorite, name, user_id, image_id, description) VALUES (%s, %s, %s, %s, %s, %s, %s);", (outfit.outfit_id, outfit.is_public, outfit.is_favorite, outfit.name, outfit.user_id, outfit.image_id, outfit.description))
+                cursor.execute("""
+                    INSERT INTO outfits(outfit_id, is_public, is_favorite, name, user_id, image_id, description, scene_json)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+                """, (
+                    outfit_id, is_public, is_favorite, name, user_id, image_id, description, json.dumps(scene)
+                ))
+
                 if outfit.seasons:
                     for season in outfit.seasons:
-                        cursor.execute("INSERT INTO outfit_seasons(outfit_id, season) VALUES (%s, %s);", (outfit.outfit_id, season.name))
+                        cursor.execute("INSERT INTO outfit_seasons(outfit_id, season) VALUES (%s, %s);", (outfit_id, season.name))
                 if outfit.tags:
                     for tag in outfit.tags:
-                        cursor.execute("INSERT INTO outfit_tags(outfit_id, tag) VALUES (%s, %s);", (outfit.outfit_id, tag.name))
-                for clothing_id in outfit.clothing_ids:
-                    cursor.execute("INSERT INTO outfit_clothing(outfit_id, clothing_id) VALUES (%s, %s);", (outfit.outfit_id, clothing_id))
+                        cursor.execute("INSERT INTO outfit_tags(outfit_id, tag) VALUES (%s, %s);", (outfit_id, tag.name))
+                for cid in clothing_ids:
+                    cursor.execute("INSERT INTO outfit_clothing(outfit_id, clothing_id) VALUES (%s, %s);", (outfit_id, cid))
+
                 conn.commit()
         except Exception as e:
-            logger.error(f"An unexpected error occurred while adding a new outfit to the database: {e}")
-            logger.error(traceback.format_exc())
-            raise e
+            try:
+                image_manager.delete_outfit_preview(image_id)
+            except Exception:
+                pass
+            raise
 
         return outfit
     

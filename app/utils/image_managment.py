@@ -10,12 +10,25 @@ from PIL import Image
 from io import BytesIO
 from backgroundremover import bg
 from app.utils.logging import get_logger
+from app.models.clothing import ClothingCategory
+
+from transformers import AutoTokenizer
+from timm import create_model
+from sklearn.cluster import KMeans
+
+from fashion_clip.fashion_clip import FashionCLIP
+import torch
+import numpy as np
+
+fclip = FashionCLIP("fashion-clip")
 
 logger = get_logger()
 
-class ImageManager:
+CATEGORIES = [category.value for category in ClothingCategory]
 
-    def remove_background(self, file: Optional[FileStorage]) -> tuple[str, str]:
+class ImageManager:
+    
+    def process_image_preview(self, file: FileStorage) -> dict:
         if not isinstance(file, FileStorage) or not file.filename.endswith((".png", ".jpg", ".jpeg")):
             raise UnsupportedFileTypeError("The file provided is not a supported image type. Supported types are PNG, JPG, and JPEG.")
         
@@ -23,10 +36,57 @@ class ImageManager:
             raise FileTooLargeError("File is too large (max 4MB)")
         
         file.seek(0)
-        fileName = str(uuid.uuid4())
         
+        image_id = str(uuid.uuid4())
+        image_path = f"app/static/temp/" + image_id + ".webp"
+        processed_image = self._extract_foreground(file)
+        
+        processed_image.save(image_path, format="WEBP")
+        
+        dominant_hexcode = self._extract_dominant_color(processed_image)
+        logger.info(dominant_hexcode)
+        
+        clothing_category = self._extract_clothing_category(image_path)
+        logger.info(clothing_category)
+        
+        return {
+            "image_url": f"https://api.clothing-booth.com/uploads/temp/{image_id}.webp",
+            "image_id": image_id,
+            "image_color": dominant_hexcode,
+            "image_category": clothing_category,
+            "image_seasons": [],
+            "image_tags": []
+        }
+    
+    def _extract_clothing_category(self, image_path: str) -> str:
+        image_emb = fclip.encode_images([image_path], batch_size=1)
+        text_emb = fclip.encode_text(CATEGORIES, batch_size=1)
+        
+        sims = (image_emb @ text_emb.T).squeeze(0)
+        best_idx = int(np.argmax(sims))
+        predicted_category = CATEGORIES[best_idx]
+        
+        return predicted_category
+        
+    def _extract_dominant_color(self, image: Image) -> str:
+        arr = np.array(image.resize((100, 100)))
+        
+        rgb = arr[:, :, :3].reshape(-1, 3)
+        alpha = arr[:, :, 3].reshape(-1)
+
+        mask = alpha > 10 # remove half-transparent pixels
+        rgb = rgb[mask]
+        
+        if len(rgb) == 0:
+            return "#000000"
+        
+        dominant_color = tuple(KMeans(n_clusters=1, random_state=0).fit(rgb).cluster_centers_[0].astype(int))
+        dominant_color_hex = '#{:02X}{:02X}{:02X}'.format(*dominant_color)
+        
+        return dominant_color_hex
+
+    def _extract_foreground(self, file: Optional[FileStorage]) -> Image:
         try:
-            
             image = Image.open(file)
             image = image.convert("RGBA")
             
@@ -55,9 +115,8 @@ class ImageManager:
             bbox = alpha.getbbox()
             
             cropped_image = new_image.crop(bbox)
-            cropped_image.save("app/static/temp/" + fileName + ".webp", format="WEBP")
             
-            return f"https://api.clothing-booth.com/uploads/temp/{fileName}.webp", fileName
+            return cropped_image
         except Exception as e:
             logger.error(f"An unexpected error occured while removing the background of an image: {e}")
             logger.error(traceback.format_exc())
@@ -86,43 +145,34 @@ class ImageManager:
             
     # ! DELETION of old temp images
     
-    def generate_outfit_collage(self, item_images: list[str]) -> tuple:
-        size = (500, 500)
-        collage = Image.new("RGBA", size, (255, 255, 255, 0))
-
-        num_items = len(item_images[:4])
+    def save_outfit_preview(self, preview_file: FileStorage) -> tuple[str, str]:
+        """
+        Returns: (public_url, image_id)
+        """
         
-        if num_items == 2:
-            cell_size = (size[0] // 2, size[1] // 2)
-            grid = [(cell_size[0] // 2, 0), (cell_size[0] // 2, cell_size[1] - 30)]
-        elif num_items == 3:
-            cell_size = (size[0] // 2, size[1] // 2)
-            grid = [(0, 0), (cell_size[0], 0), (size[0]//4, cell_size[1])]
-        else:
-            cell_size = (size[0] // 2, size[1] // 2)
-            grid = [(0, 0), (cell_size[0], 0), (0, cell_size[1]), (cell_size[0], cell_size[1])]
+        mimetype = (preview_file.mimetype or "").lower()
+        if mimetype not in ("image/png", "image/webp", "image/jpeg", "image/jpg"):
+            raise ValueError("Invalid preview mimetype. Must be png/webp/jpeg.")
 
-        for idx, img_id in enumerate(item_images[:4]):
-            img = Image.open("app/static/clothing_images/" + img_id + ".webp").convert("RGBA")
-            img.thumbnail(cell_size, Image.ANTIALIAS)
+        preview_file.stream.seek(0)
+        img = Image.open(preview_file.stream).convert("RGBA")
 
-            offset_x = (cell_size[0] - img.width) // 2
-            offset_y = (cell_size[1] - img.height) // 2
+        max_size = (1024, 1024)
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
 
-            paste_x = grid[idx][0] + offset_x
-            paste_y = grid[idx][1] + offset_y
-
-            collage.paste(img, (paste_x, paste_y), img)
-
-            
-        filename = str(uuid.uuid4())
-            
-        alpha = collage.getchannel("A")
+        alpha = img.getchannel("A")
         bbox = alpha.getbbox()
-            
-        cropped_image = collage.crop(bbox)
-        cropped_image.save("app/static/outfit_collages/" + filename + ".webp", "WEBP")
-        
-        return f"https://api.clothing-booth.com/uploads/outfit_collages/{filename}.webp", filename
+        if bbox:
+            img = img.crop(bbox)
+
+        filename = str(uuid.uuid4())
+        path = f"app/static/outfit_collages/{filename}.webp"
+        img.save(path, "WEBP")  # optional: quality=85, method=6
+
+        public_url = f"https://api.clothing-booth.com/uploads/outfit_collages/{filename}.webp"
+        return public_url, filename
+    
+    def delete_outfit_preview(self, image_id: str):
+        os.remove(f"app/static/outfit_collages/{image_id}.webp")
     
 image_manager = ImageManager()

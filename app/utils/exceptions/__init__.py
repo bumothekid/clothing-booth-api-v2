@@ -41,7 +41,12 @@ from app.utils.exceptions.outfits import (
     OutfitOffsetInvalidError,
     OutfitNameTooShortError,
     OutfitNameTooLongError,
-    OutfitDescriptionTooLongError
+    OutfitDescriptionTooLongError,
+    OutfitPublicMissingError,
+    OutfitFavoriteMissingError,
+    OutfitSceneMissingError,
+    OutfitSceneInvalidError,
+    OutfitPreviewInvalidError
 )
 from app.utils.exceptions.auth import AuthTokenExpiredError, AuthAccessTokenInvalidError, AuthRefreshTokenInvalidError, AuthAccessTokenMissingError, AuthRefreshTokenMissingError, AuthCredentialsWrongError
 from app.utils.exceptions.user import (
@@ -96,6 +101,11 @@ __all__ = [
     "OutfitNameTooShortError",
     "OutfitNameTooLongError",
     "OutfitDescriptionTooLongError",
+    "OutfitPublicMissingError",
+    "OutfitFavoriteMissingError",
+    "OutfitSceneMissingError",
+    "OutfitSceneInvalidError",
+    "OutfitPreviewInvalidError",
     "AuthTokenExpiredError",
     "AuthAccessTokenInvalidError",
     "AuthRefreshTokenInvalidError",

@@ -43,3 +43,23 @@ class OutfitNameTooLongError(OutfitValidationError):
 class OutfitDescriptionTooLongError(OutfitValidationError):
     def __init__(self, message="Outfit description is too long."):
         super().__init__(message)
+        
+class OutfitPublicMissingError(OutfitValidationError):
+    def __init__(self, message="Outfit is public is missing."):
+        super().__init__(message)
+        
+class OutfitFavoriteMissingError(OutfitValidationError):
+    def __init__(self, message="Outfit is favorite is missing."):
+        super().__init__(message)
+        
+class OutfitSceneMissingError(OutfitValidationError):
+    def __init__(self, message="Outfit scene is missing."):
+        super().__init__(message)
+        
+class OutfitSceneInvalidError(OutfitValidationError):
+    def __init__(self, message="Outfit scene is invalid."):
+        super().__init__(message)
+        
+class OutfitPreviewInvalidError(OutfitValidationError):
+    def __init__(self, message="Outfit preview is invalid."):
+        super().__init__(message)
