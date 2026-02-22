@@ -27,12 +27,9 @@ def create_outfit():
     token = request.headers['Authorization']
 
     payload_raw = request.form.get("payload")
-    preview_file = request.files.get("preview_image")
 
     if not payload_raw:
         return jsonify({"error": "Missing payload"}), 400
-    if not preview_file:
-        return jsonify({"error": "Missing preview file"}), 400
 
     try:
         data = json.loads(payload_raw)
@@ -48,7 +45,6 @@ def create_outfit():
         tags=data.get("tags"),
         is_public=data.get("is_public"),
         is_favorite=data.get("is_favorite"),
-        preview_file=preview_file,
     )
 
     return jsonify({"outfit": outfit.to_dict()}), 201

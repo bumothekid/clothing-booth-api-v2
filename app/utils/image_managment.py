@@ -172,6 +172,43 @@ class ImageManager:
         public_url = f"https://api.clothing-booth.com/uploads/outfit_collages/{filename}.webp"
         return public_url, filename
     
+    def get_clothing_image(clothing_id: str) -> Image:
+        return Image.open(f"app/static/clothing_images/{clothing_id}.webp")
+    
+    def generate_outfit_preview(self, scene: dict) -> tuple[str, str]:
+        """
+        Returns: (public_url, image_id)
+        """
+        
+        canvas_width = 1024
+        canvas_height = 1024
+
+        canvas = Image.new("RGBA", (canvas_width, canvas_height), (255, 255, 255, 0))
+        
+        items: list = scene["items"]
+        items.sort(key=lambda x: x["z"])
+        
+        for item_data in items:
+            self._place_item(canvas, item_data)
+        
+    def _place_item(self, canvas: Image, item_data: dict):
+        image = self.get_clothing_image(item_data["clothing_id"])
+        
+        scale_factor = item_data["scale"]
+        new_width = int(image.width * scale_factor)
+        new_height = int(image.height * scale_factor)
+        image = image.resize((new_width, new_height), Image.LANCZOS)
+        
+        image = image.rotate(-item_data["rotation"], expand=True)
+        
+        center_x = item_data["x"] * canvas.width
+        center_y = item_data["y"] * canvas.height
+        
+        paste_x = int(center_x - image.width / 2)
+        paste_y = int(center_y - image.height / 2)
+        
+        canvas.paste(image, (paste_x, paste_y), image)
+    
     def delete_outfit_preview(self, image_id: str):
         os.remove(f"app/static/outfit_collages/{image_id}.webp")
     

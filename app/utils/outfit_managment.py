@@ -63,7 +63,7 @@ class OutfitManager:
                             """)
             conn.commit()
 
-    def create_outfit(self, token: str, name: str, scene: dict, seasons: Optional[list[str]], tags: Optional[list[str]], is_public: bool, is_favorite: bool, preview_file, description: Optional[str] = None) -> Outfit:
+    def create_outfit(self, token: str, name: str, scene: dict, seasons: Optional[list[str]], tags: Optional[list[str]], is_public: bool, is_favorite: bool, description: Optional[str] = None) -> Outfit:
         if not isinstance(name, str) or not name.strip():
             raise OutfitNameMissingError("The provided name is missing or invalid.")
         
@@ -72,9 +72,6 @@ class OutfitManager:
 
         if len(name) > 50:
             raise OutfitNameTooLongError("The provided name is too long, it has to be at most 50 characters long.")
-        
-        if not isinstance(clothing_ids, list) or not len(clothing_ids) >= 2:
-            raise OutfitClothingIDsMissingError("The clothing_ids are missing.")
 
         if seasons is not None:
             if not isinstance(seasons, list) or not all(isinstance(season, str) for season in seasons):
@@ -107,7 +104,9 @@ class OutfitManager:
 
         if not isinstance(scene, dict):
             raise OutfitSceneMissingError("scene is missing or invalid.")
+        
         items = scene.get("items")
+        
         if not isinstance(items, list) or len(items) < 2:
             raise OutfitSceneInvalidError("scene.items must contain at least 2 items.")
 
@@ -138,11 +137,17 @@ class OutfitManager:
                 if cursor.fetchone() is None:
                     raise OutfitClothingIDInvalidError(f"Clothing ID {cid} invalid or not owned by user.")
 
-        ct = (preview_file.mimetype or "").lower()
-        if ct not in ("image/png", "image/webp", "image/jpeg"):
-            raise OutfitPreviewInvalidError("preview must be png, webp, or jpeg.")
+        #ct = (preview_file.mimetype or "").lower()
+        #if ct not in ("image/png", "image/webp", "image/jpeg"):
+            #raise OutfitPreviewInvalidError("preview must be png, webp, or jpeg.")
 
-        image_id = image_manager.save_outfit_preview(outfit_id, preview_file)
+        #image_id = image_manager.save_outfit_preview(outfit_id, preview_file)
+        
+        # genrate outfit preview image
+        
+        print(scene)
+        
+        return
 
         outfit = Outfit(
             outfit_id=outfit_id,
@@ -152,7 +157,7 @@ class OutfitManager:
             created_at=datetime.now(),
             user_id=user_id,
             clothing_ids=clothing_ids,
-            image_id=image_id,
+            #image_id=image_id,
             seasons=seasons,
             tags=tags,
             description=description
