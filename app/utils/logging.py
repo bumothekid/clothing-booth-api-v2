@@ -2,6 +2,7 @@ __all__ = ["get_logger"]
 
 import logging
 import time
+import os
 from logging.handlers import RotatingFileHandler
 from os import getenv
 
@@ -33,7 +34,8 @@ class Logger:
             cls._logger.setLevel(level)
 
             if not cls._logger.hasHandlers():
-                log_filename = f"logs/app.log"
+                log_filename = "logs/app.log"
+                os.makedirs(os.path.dirname(log_filename), exist_ok=True)
                 file_handler = RotatingFileHandler(log_filename, maxBytes=1024*1024, backupCount=5)
                 stream_handler = logging.StreamHandler()
                 
