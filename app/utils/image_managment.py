@@ -68,7 +68,7 @@ class ImageManager:
         
         return predicted_category
         
-    def _extract_dominant_color(self, image: Image) -> str:
+    def _extract_dominant_color(self, image: Image.Image) -> str:
         arr = np.array(image.resize((100, 100)))
         
         rgb = arr[:, :, :3].reshape(-1, 3)
@@ -85,7 +85,7 @@ class ImageManager:
         
         return dominant_color_hex
 
-    def _extract_foreground(self, file: Optional[FileStorage]) -> Image:
+    def _extract_foreground(self, file: Optional[FileStorage]) -> Image.Image:
         try:
             image = Image.open(file)
             image = image.convert("RGBA")
@@ -172,7 +172,7 @@ class ImageManager:
         public_url = f"https://api.clothing-booth.com/uploads/outfit_collages/{filename}.webp"
         return public_url, filename
     
-    def get_clothing_image(clothing_id: str) -> Image:
+    def get_clothing_image(self, clothing_id: str) -> Image.Image:
         return Image.open(f"app/static/clothing_images/{clothing_id}.webp")
     
     def generate_outfit_preview(self, scene: dict) -> tuple[str, str]:
@@ -191,7 +191,14 @@ class ImageManager:
         for item_data in items:
             self._place_item(canvas, item_data)
         
-    def _place_item(self, canvas: Image, item_data: dict):
+        filename = str(uuid.uuid4())
+        path = f"app/static/outfit_collages/{filename}.webp"
+        canvas.save(path, "WEBP")
+        
+        public_url = f"https://api.clothing-booth.com/uploads/outfit_collages/{filename}.webp"
+        return public_url, filename
+        
+    def _place_item(self, canvas: Image.Image, item_data: dict):
         image = self.get_clothing_image(item_data["clothing_id"])
         
         scale_factor = item_data["scale"]
