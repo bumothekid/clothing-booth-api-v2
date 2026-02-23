@@ -10,6 +10,7 @@ from typing import Optional
 from mysql.connector.errors import IntegrityError
 from app.models.outfit import Outfit, OutfitTags, OutfitSeason
 from app.utils.authentication_managment import authentication_manager
+from app.utils.clothing_managment import clothing_manager
 from app.utils.image_managment import image_manager
 from app.utils.logging import get_logger
 
@@ -63,7 +64,7 @@ class OutfitManager:
                             """)
             conn.commit()
 
-    def create_outfit(self, token: str, name: str, scene: dict, seasons: Optional[list[str]], tags: Optional[list[str]], is_public: bool, is_favorite: bool, description: Optional[str] = None) -> Outfit:
+    def create_outfit(self, user_id: str, name: str, scene: dict, seasons: Optional[list[str]], tags: Optional[list[str]], is_public: bool, is_favorite: bool, description: Optional[str] = None) -> Outfit:
         if not isinstance(name, str) or not name.strip():
             raise OutfitNameMissingError("The provided name is missing or invalid.")
         
@@ -92,7 +93,7 @@ class OutfitManager:
                     raise OutfitTagsInvalidError(f"The provided tag ({tag}) is not valid.")
 
             tags = [OutfitTags[tag.strip().upper()] for tag in tags]
-            
+        
         if not isinstance(is_public, bool):
             raise OutfitPublicMissingError("The is_public is missing.")
             
@@ -105,26 +106,20 @@ class OutfitManager:
         if not isinstance(scene, dict):
             raise OutfitSceneMissingError("scene is missing or invalid.")
         
-        items = scene.get("items")
-        
-        if not isinstance(items, list) or len(items) < 2:
+        if len(scene) < 2:
             raise OutfitSceneInvalidError("scene.items must contain at least 2 items.")
 
         clothing_ids = []
-        for it in items:
-            cid = it.get("clothing_id")
+        for item in scene.values():
+            cid = item.get("clothing_id")
             if not isinstance(cid, str) or not cid.strip():
                 raise OutfitSceneInvalidError("scene item clothing_id missing.")
             clothing_ids.append(cid)
 
-            for key in ("x", "y", "scale", "rotation", "z"):
-                if key not in it:
-                    raise OutfitSceneInvalidError(f"scene item missing '{key}'.")
+            for sub_key in ("x", "y", "scale", "rotation", "z"):
+                if sub_key not in item:
+                    raise OutfitSceneInvalidError(f"scene item missing '{sub_key}'.")
 
-        if len(set(clothing_ids)) != len(clothing_ids):
-            raise OutfitSceneInvalidError("duplicate clothing_ids in scene are not allowed.")
-
-        user_id = authentication_manager.get_user_id_from_token(token)
         outfit_id = str(uuid.uuid4())
 
         for cid in clothing_ids:
@@ -136,18 +131,22 @@ class OutfitManager:
                 )
                 if cursor.fetchone() is None:
                     raise OutfitClothingIDInvalidError(f"Clothing ID {cid} invalid or not owned by user.")
+        
+        validated_items = []
 
-        #ct = (preview_file.mimetype or "").lower()
-        #if ct not in ("image/png", "image/webp", "image/jpeg"):
-            #raise OutfitPreviewInvalidError("preview must be png, webp, or jpeg.")
+        for item in scene.values():
+            clothing_id = item["clothing_id"]
+            image_id = clothing_manager.get_image_id_by_clothing_id(
+                user_id=user_id,
+                clothing_id=clothing_id
+            )
 
-        #image_id = image_manager.save_outfit_preview(outfit_id, preview_file)
+            validated_items.append({
+                "item": item,
+                "image_id": image_id
+            })
         
-        # genrate outfit preview image
-        
-        print(scene)
-        
-        return
+        _, image_id =image_manager.generate_outfit_preview(items=validated_items)
 
         outfit = Outfit(
             outfit_id=outfit_id,
@@ -157,7 +156,7 @@ class OutfitManager:
             created_at=datetime.now(),
             user_id=user_id,
             clothing_ids=clothing_ids,
-            #image_id=image_id,
+            image_id=image_id,
             seasons=seasons,
             tags=tags,
             description=description
