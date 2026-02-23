@@ -139,24 +139,18 @@ class ClothingManager:
 
         return clothing
 
-    def get_clothing_by_id(self, token: str, clothing_id: Optional[str]) -> Clothing:
+    def get_clothing_by_id(self, user_id: str, clothing_id: Optional[str]) -> Clothing:
         if not isinstance(clothing_id, str) or not clothing_id.strip():
             raise ClothingIDMissingError("The clothing ID is missing.")
-
-        user_id = authentication_manager.get_user_id_from_token(token)
         
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                cursor.execute("SELECT clothing_id, is_public, name, category, color, created_at, image_id, user_id, description FROM clothing WHERE clothing_id = %s;", (clothing_id,))
+                cursor.execute("SELECT clothing_id, is_public, name, category, color, created_at, image_id, user_id, description FROM clothing WHERE clothing_id = %s AND user_id = %s;", (clothing_id, user_id,))
                 clothing = cursor.fetchone()
                 
                 if clothing is None:
                     raise ClothingNotFoundError("The provided ID does not match any clothing in the database.")
-                    
-                if clothing["user_id"] != user_id:
-                    if not clothing["is_public"]:
-                        raise ClothingNotFoundError("The provided ID does not match any clothing in the database for the current user.")
                 
                 cursor.execute("SELECT season FROM clothing_seasons WHERE clothing_id = %s;", (clothing_id,))
                 seasons = cursor.fetchall()
@@ -325,7 +319,15 @@ class ClothingManager:
             logger.error(traceback.format_exc())
             raise e
         
-        return self.get_clothing_by_id(token, clothing_id)
+        return self.get_clothing_by_id(user_id, clothing_id)
+    
+    def get_image_id_by_clothing_id(self, user_id: str, clothing_id: str) -> str:
+        """
+        Returns: image_id
+        """
+        clothing = self.get_clothing_by_id(user_id, clothing_id)
+        return clothing.image_id
+        
     
     def delete_clothing_by_id(self, token: str, clothing_id: str) -> None:
         if not isinstance(clothing_id, str) or not clothing_id.strip():
