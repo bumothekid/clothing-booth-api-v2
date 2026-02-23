@@ -9,7 +9,8 @@ from typing import Optional
 from string import ascii_letters, digits
 import traceback
 from datetime import datetime, timedelta
-from flask import request, jsonify
+from flask import request, jsonify, g
+from functools import wraps
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from app.utils.database import Database
@@ -24,16 +25,25 @@ REFRESH_TOKEN_LENGTH = 16
 logger = get_logger()
 
 def authorize_request(f):
+    @wraps(f)
     def wrapper(*args, **kwargs):
-        if "Authorization" not in request.headers:
+        token = request.headers.get("Authorization")
+
+        if not token:
             return jsonify({"error": "No token provided"}), 401
-        
-        token = request.headers["Authorization"]
+
         if not authentication_manager._verify_access_token(token):
             return jsonify({"message": "Unauthorized access"}), 403
-        
+
+        user_id = authentication_manager.get_user_id_from_token(token)
+
+        if not user_id:
+            return jsonify({"message": "Unauthorized access"}), 403
+
+        g.user_id = user_id
+
         return f(*args, **kwargs)
-    wrapper.__name__ = f.__name__
+
     return wrapper
 
 class AuthenticationManager:
