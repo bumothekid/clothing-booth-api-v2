@@ -172,10 +172,18 @@ class ImageManager:
         public_url = f"https://api.clothing-booth.com/uploads/outfit_collages/{filename}.webp"
         return public_url, filename
     
-    def get_clothing_image(self, clothing_id: str) -> Image.Image:
-        return Image.open(f"app/static/clothing_images/{clothing_id}.webp")
+    def load_clothing_image_by_id(self, image_id: str) -> Image.Image:
+        image_path = os.path.join(
+            "app/static/clothing_images",
+            f"{image_id}.webp"
+        )
+
+        if not os.path.exists(image_path):
+            raise FileNotFoundError("Image file missing")
+
+        return Image.open(image_path)
     
-    def generate_outfit_preview(self, scene: dict) -> tuple[str, str]:
+    def generate_outfit_preview(self, items: list[dict]) -> tuple[str, str]:
         """
         Returns: (public_url, image_id)
         """
@@ -185,11 +193,14 @@ class ImageManager:
 
         canvas = Image.new("RGBA", (canvas_width, canvas_height), (255, 255, 255, 0))
         
-        items: list = scene["items"]
-        items.sort(key=lambda x: x["z"])
-        
-        for item_data in items:
-            self._place_item(canvas, item_data)
+        items.sort(key=lambda x: x["item"]["z"])
+
+        for entry in items:
+            self._place_item(
+                canvas,
+                entry["item"],
+                entry["image_id"]
+            )
         
         filename = str(uuid.uuid4())
         path = f"app/static/outfit_collages/{filename}.webp"
@@ -198,13 +209,15 @@ class ImageManager:
         public_url = f"https://api.clothing-booth.com/uploads/outfit_collages/{filename}.webp"
         return public_url, filename
         
-    def _place_item(self, canvas: Image.Image, item_data: dict):
-        image = self.get_clothing_image(item_data["clothing_id"])
+    def _place_item(self, canvas: Image.Image, item_data: dict, image_id: str):
+        image = self.load_clothing_image_by_id(image_id)
         
-        scale_factor = item_data["scale"]
-        new_width = int(image.width * scale_factor)
-        new_height = int(image.height * scale_factor)
-        image = image.resize((new_width, new_height), Image.LANCZOS)
+        target_width = item_data["scale"] * canvas.width
+
+        aspect = image.height / image.width
+        target_height = target_width * aspect
+
+        image = image.resize((int(target_width), int(target_height)), Image.LANCZOS)
         
         image = image.rotate(-item_data["rotation"], expand=True)
         
