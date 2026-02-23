@@ -1,5 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from app.utils.clothing_managment import clothing_manager
+from app.utils.authentication_managment import authentication_manager
 from app.utils.limiter import limiter
 from app.utils.authentication_managment import authorize_request
 
@@ -9,8 +10,7 @@ clothing = Blueprint("clothing", __name__)
 @limiter.limit('5 per minute')
 @authorize_request
 def get_clothing_piece(clothing_id: str):
-    token = request.headers["Authorization"]
-    clothing = clothing_manager.get_clothing_by_id(token, clothing_id)
+    clothing = clothing_manager.get_clothing_by_id(g.user_id, clothing_id)
     return jsonify(clothing.to_dict()), 200
 
 @clothing.route('/<clothing_id>', methods=['DELETE'])
