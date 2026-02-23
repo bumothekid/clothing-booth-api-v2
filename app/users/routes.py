@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, Response, json
+from flask import Blueprint, request, jsonify, Response, g
 from ..utils.user_managment import user_manager
 from app.utils.outfit_managment import outfit_manager
 from app.utils.clothing_managment import clothing_manager
@@ -24,20 +24,12 @@ def get_outfit_list(user_id: str):
 @limiter.limit('5 per minute')
 @authorize_request
 def create_outfit():
-    token = request.headers['Authorization']
-
-    payload_raw = request.form.get("payload")
-
-    if not payload_raw:
-        return jsonify({"error": "Missing payload"}), 400
-
-    try:
-        data = json.loads(payload_raw)
-    except Exception:
-        return jsonify({"error": "Invalid payload JSON"}), 400
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
 
     outfit = outfit_manager.create_outfit(
-        token=token,
+        user_id=g.user_id,
         name=data.get("name"),
         description=data.get("description"),
         scene=data.get("scene"),
