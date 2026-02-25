@@ -135,7 +135,7 @@ class UserManager:
             logger.error(traceback.format_exc())
             raise e
         
-    def update_user_username(self, user_id: str, username: str) -> tuple:
+    def update_user_username(self, user_id: str, username: str) -> None:
         if not isinstance(username, str):
             raise UsernameMissingError("Username is required.")
         
@@ -150,16 +150,10 @@ class UserManager:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT username FROM users WHERE user_id = %s;", (user_id,))
-                db_old_username = cursor.fetchone()
-                
-                if db_old_username:
-                    db_old_username = db_old_username[0]
-                    
                 cursor.execute("UPDATE users SET username = %s WHERE user_id = %s;", (username, user_id,))
                 conn.commit()
         except IntegrityError as e:
-            if "username" in e.msg:
+            if e.msg and"username" in e.msg:
                 raise UsernameAlreadyInUseError("The provided username is already in use.")
             raise Exception(e.msg)
         except Exception as e:
