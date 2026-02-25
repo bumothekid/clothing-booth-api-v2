@@ -2,6 +2,7 @@ __all__ = ["user_manager"]
 
 import traceback
 import os
+from typing import Optional
 from app.utils.database import Database
 from app.utils.exceptions import PasswordMissingError, SignInNameMissingError, EmailInvalidError, PasswordTooShortError, UsernameTooLongError, EmailMissingError, UsernameTooShortError, UsernameMissingError, ProfilePictureInvalidError, EmailAlreadyInUseError, UsernameAlreadyInUseError, AuthCredentialsWrongError, UserNotFoundError
 from app.utils.helpers import helper
@@ -33,19 +34,24 @@ class UserManager:
                            """)
             conn.commit()
 
-    def upgrade_guest_account(self, user_id: str, email: str, username: str, password: str, profile_picture: str) -> User:
+    def upgrade_guest_account(self, user_id: str, email: Optional[str], username: Optional[str], password: Optional[str], profile_picture: Optional[str]) -> User:
         if not (isinstance(email, str) and email.strip()) and not (isinstance(username, str) and username.strip()):
             raise SignInNameMissingError("Either an email or username is required.")
-
-        if email:
-            if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                raise EmailInvalidError("The provided email is invalid.")
-
-        if username:
-            if len(username) < 3:
-                raise UsernameTooShortError("Username must be at least 3 characters long.")
-            if len(username) > 20:
-                raise UsernameTooLongError("Username must be at most 20 characters long.")
+            
+        if not isinstance(email, str):
+            raise EmailMissingError("Email is required.")
+        
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            raise EmailInvalidError("The provided email is invalid.")
+            
+        if not isinstance(username, str):
+            raise UsernameMissingError("Username is required.")
+        
+        if len(username) < 3:
+            raise UsernameTooShortError("Username must be at least 3 characters long.")
+        
+        if len(username) > 20:
+            raise UsernameTooLongError("Username must be at most 20 characters long.")
 
         if not isinstance(password, str):
             raise PasswordMissingError("Password is required.")
@@ -135,7 +141,7 @@ class UserManager:
             logger.error(traceback.format_exc())
             raise e
         
-    def update_user_username(self, user_id: str, username: str) -> None:
+    def update_user_username(self, user_id: str, username: Optional[str]) -> None:
         if not isinstance(username, str):
             raise UsernameMissingError("Username is required.")
         

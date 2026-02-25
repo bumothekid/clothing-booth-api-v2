@@ -74,20 +74,18 @@ def create_clothing_piece():
 
     return jsonify({"clothing": clothing.to_dict()}), 201
 
-"""
 @users.route('/me/username', methods=['PUT'])
 @authorize_request
 @limiter.limit('1 per hour')
-def setUsername():
-    data = request.get_json()
+def set_new_username():
+    data: dict = request.get_json()
     if not data:
         return jsonify({"error": "No data provided"}), 400
     
-    if "username" not in data:
-        return jsonify({"error": "Missing username"}), 400
+    username = data.get("username", None)
     
     try:
-        username, oldUsername = user_manager.setUsername(data["username"], g.user_id)
+        user_manager.update_user_username(g.user_id, username)
     except (UsernameTooShortError, UsernameTooLongError) as e:
         return jsonify({"error": str(e)}), 400
     except UsernameAlreadyInUseError as e:
