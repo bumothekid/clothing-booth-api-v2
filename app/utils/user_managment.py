@@ -1,19 +1,13 @@
 __all__ = ["user_manager"]
 
-import random
 import traceback
-import uuid
 import os
 from typing import Optional
 from app.utils.database import Database
-from app.utils.exceptions import UnsupportedFileTypeError, PasswordMissingError, SignInNameMissingError, EmailInvalidError, PasswordTooShortError, UsernameTooLongError, EmailMissingError, UsernameTooShortError, UsernameMissingError, ProfilePictureInvalidError, EmailAlreadyInUseError, UsernameAlreadyInUseError, AuthCredentialsWrongError, UserNotFoundError
+from app.utils.exceptions import PasswordMissingError, SignInNameMissingError, EmailInvalidError, PasswordTooShortError, UsernameTooLongError, EmailMissingError, UsernameTooShortError, UsernameMissingError, ProfilePictureInvalidError, EmailAlreadyInUseError, UsernameAlreadyInUseError, AuthCredentialsWrongError, UserNotFoundError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from app.utils.authentication_managment import authentication_manager
-from werkzeug.datastructures import FileStorage
 from mysql.connector.errors import IntegrityError
-from PIL import Image
-from os import path, remove
 from app.models.user import User
 import re
 from app.utils.logging import get_logger
