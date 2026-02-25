@@ -29,7 +29,7 @@ CATEGORIES = [category.value for category in ClothingCategory]
 class ImageManager:
     
     def process_image_preview(self, file: FileStorage) -> dict:
-        if not isinstance(file, FileStorage) or not file.filename.endswith((".png", ".jpg", ".jpeg")):
+        if not isinstance(file, FileStorage) or not isinstance(file.filename, str) or not file.filename.endswith((".png", ".jpg", ".jpeg")):
             raise UnsupportedFileTypeError("The file provided is not a supported image type. Supported types are PNG, JPG, and JPEG.")
         
         if len(file.read()) > 4*1024*1024:
