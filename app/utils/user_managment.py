@@ -72,9 +72,9 @@ class UserManager:
                 
                 conn.commit()
         except IntegrityError as e:
-            if "email" in e.msg:
+            if e.msg and "email" in e.msg:
                 raise EmailAlreadyInUseError("The provided email is already in use.")
-            elif "username" in e.msg:
+            elif e.msg and "username" in e.msg:
                 raise UsernameAlreadyInUseError("The provided username is already in use.")
             else:
                 logger.error(f"Unexpected IntegrityError: {e.msg}")
