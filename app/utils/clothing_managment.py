@@ -215,9 +215,7 @@ class ClothingManager:
         
         return clothes_list
     
-    def update_clothing(self, token: str, clothing_id: str, name: Optional[str] = None, category: Optional[str] = None, description: Optional[str] = None, color: Optional[str] = None, seasons: Optional[list[str]] = None, tags: Optional[list[str]] = None, image_id: Optional[str] = None) -> Clothing:
-        user_id = authentication_manager.get_user_id_from_token(token)
-        
+    def update_clothing(self, user_id: str, clothing_id: str, name: Optional[str] = None, category: Optional[str] = None, description: Optional[str] = None, color: Optional[str] = None, seasons: Optional[list[str]] = None, tags: Optional[list[str]] = None, image_id: Optional[str] = None) -> Clothing:
         fields = []
         values = []
 
@@ -329,11 +327,9 @@ class ClothingManager:
         return clothing.image_id
         
     
-    def delete_clothing_by_id(self, token: str, clothing_id: str) -> None:
+    def delete_clothing_by_id(self, user_id: str, clothing_id: str) -> None:
         if not isinstance(clothing_id, str) or not clothing_id.strip():
             raise ClothingIDMissingError("The clothing ID is missing.")
-        
-        user_id = authentication_manager.get_user_id_from_token(token)
         
         try:    
             with Database.getConnection() as conn:

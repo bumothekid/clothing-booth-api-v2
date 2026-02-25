@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify, g
 from app.utils.clothing_managment import clothing_manager
-from app.utils.authentication_managment import authentication_manager
 from app.utils.limiter import limiter
 from app.utils.authentication_managment import authorize_request
 
@@ -17,9 +16,7 @@ def get_clothing_piece(clothing_id: str):
 @limiter.limit('5 per minute')
 @authorize_request
 def delete_clothing_piece(clothing_id: str):
-    token = request.headers["Authorization"]
-    
-    clothing_manager.delete_clothing_by_id(token, clothing_id)
+    clothing_manager.delete_clothing_by_id(g.user_id, clothing_id)
 
     return "", 204
 
@@ -37,7 +34,7 @@ def patch_clothing_piece(clothing_id: str):
     image_id = data.get("image_id", None)
     description = data.get("description", None)
     color = data.get("color", None)
-    clothing = clothing_manager.update_clothing(token, clothing_id, name, category, description, color, seasons, tags, image_id)
+    clothing = clothing_manager.update_clothing(g.user_id, clothing_id, name, category, description, color, seasons, tags, image_id)
     return jsonify({"clothing": clothing.to_dict()}), 200
 
 """
