@@ -4,6 +4,7 @@ import traceback
 import os
 from app.utils.database import Database
 from app.utils.exceptions import PasswordMissingError, SignInNameMissingError, EmailInvalidError, PasswordTooShortError, UsernameTooLongError, EmailMissingError, UsernameTooShortError, UsernameMissingError, ProfilePictureInvalidError, EmailAlreadyInUseError, UsernameAlreadyInUseError, AuthCredentialsWrongError, UserNotFoundError
+from app.utils.helpers import helper
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from mysql.connector.errors import IntegrityError
@@ -109,7 +110,7 @@ class UserManager:
             with Database.getConnection() as conn:
                 cursor = conn.cursor(dictionary=True)
                 cursor.execute("SELECT user_id, is_guest, created_at, NULL as updated_at, username, NULL as email, profile_picture FROM users WHERE user_id = %s;", (user_id, ))
-                db_user = cursor.fetchone()
+                db_user = helper.ensure_dict(cursor.fetchone())
                 
                 user = User.from_dict(db_user)
                 
@@ -124,7 +125,7 @@ class UserManager:
             with Database.getConnection() as conn:
                 cursor = conn.cursor(dictionary=True)
                 cursor.execute("SELECT user_id, is_guest, created_at, updated_at, username, email, profile_picture FROM users WHERE user_id = %s;", (user_id, ))
-                db_user = cursor.fetchone()
+                db_user = helper.ensure_dict(cursor.fetchone())
                 
                 user = User.from_dict(db_user)
                 
