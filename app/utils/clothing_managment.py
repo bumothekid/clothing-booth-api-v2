@@ -167,7 +167,7 @@ class ClothingManager:
         
         return clothing
 
-    def get_list_of_clothing_by_user_id(self, user_id: Optional[str], limit: int = 1000, offset: int = 0, category: str = None) -> list[Clothing]:
+    def get_list_of_clothing_by_user_id(self, user_id: Optional[str], category: Optional[str], limit: int = 1000, offset: int = 0) -> list[Clothing]:
         if not isinstance(user_id, str) or not user_id.strip():
             raise ClothingIDMissingError("The provided user ID is missing or invalid.")
 
