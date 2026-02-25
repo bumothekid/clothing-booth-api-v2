@@ -91,9 +91,9 @@ def set_new_username():
     except UsernameAlreadyInUseError as e:
         return jsonify({"error": str(e), "key": "username"}), 409
     
-    return jsonify({"username": username, "old_username": oldUsername}), 200
+    return jsonify({"message": "Username updated successfully."}), 200
 
-
+"""
 @users.route('/me', methods=['GET'])
 @limiter.limit('10 per minute')
 @authorize_request
