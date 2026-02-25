@@ -39,7 +39,7 @@ class UserManager:
                            """)
             conn.commit()
 
-    def upgrade_guest_account(self, token: str, email: Optional[str], username: Optional[str], password: str, profile_picture: Optional[str]) -> User:
+    def upgrade_guest_account(self, user_id: str, email: Optional[str], username: Optional[str], password: str, profile_picture: Optional[str]) -> User:
         if not (isinstance(email, str) and email.strip()) and not (isinstance(username, str) and username.strip()):
             raise SignInNameMissingError("Either an email or username is required.")
 
@@ -61,8 +61,6 @@ class UserManager:
 
         if profile_picture is not None and profile_picture not in os.listdir("app/static/profile_pictures/default/"):
             raise ProfilePictureInvalidError("Profile picture must be from the default options.")
-
-        user_id = authentication_manager.get_user_id_from_token(token)
         
         hashed_password = PasswordHasher.hash(password)
         
@@ -92,9 +90,7 @@ class UserManager:
         
         return user
         
-    def delete_account(self, token: str, password: str) -> None:
-        user_id = authentication_manager.get_user_id_from_token(token)
-        
+    def delete_account(self, user_id: str, password: str) -> None:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()

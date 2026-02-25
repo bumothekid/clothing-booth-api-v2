@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 #from app.utils.exceptions import EmailInvalidError, PasswordTooShortError, UsernameTooLongError, UsernameTooShortError, EmailAlreadyInUseError, WrongSignInCredentialsError, UsernameAlreadyInUseError, AuthValidationError, UserProfilePictureNotFoundError
 from app.utils.authentication_managment import authentication_manager,  authorize_request
 from app.utils.user_managment import user_manager
@@ -40,7 +40,6 @@ def delete_refresh_token():
 @limiter.limit("5 per minute")
 @authorize_request
 def upgrade_guest():
-    token = request.headers["Authorization"]
     data: dict = request.get_json()
     
     email = data.get("email", None)
@@ -48,7 +47,7 @@ def upgrade_guest():
     password = data.get("password", None)
     profile_picture = data.get("profile_picture", None)
     
-    user = user_manager.upgrade_guest_account(token, email, username, password, profile_picture)
+    user = user_manager.upgrade_guest_account(g.user_id, email, username, password, profile_picture)
     
     return jsonify(user.from_dict), 201
     
@@ -64,5 +63,3 @@ def login():
     access_token, expires_in, refresh_token = authentication_manager.sign_in_user(email, username, password)
     
     return jsonify({"access_token": access_token, "expires_in": expires_in, "refresh_token": refresh_token})
-
-# TODO: Create endpoint to delete account
