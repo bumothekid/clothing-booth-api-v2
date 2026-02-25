@@ -2,7 +2,6 @@ __all__ = ["user_manager"]
 
 import traceback
 import os
-from typing import Optional
 from app.utils.database import Database
 from app.utils.exceptions import PasswordMissingError, SignInNameMissingError, EmailInvalidError, PasswordTooShortError, UsernameTooLongError, EmailMissingError, UsernameTooShortError, UsernameMissingError, ProfilePictureInvalidError, EmailAlreadyInUseError, UsernameAlreadyInUseError, AuthCredentialsWrongError, UserNotFoundError
 from argon2 import PasswordHasher
@@ -33,7 +32,7 @@ class UserManager:
                            """)
             conn.commit()
 
-    def upgrade_guest_account(self, user_id: str, email: Optional[str], username: Optional[str], password: str, profile_picture: Optional[str]) -> User:
+    def upgrade_guest_account(self, user_id: str, email: str, username: str, password: str, profile_picture: str) -> User:
         if not (isinstance(email, str) and email.strip()) and not (isinstance(username, str) and username.strip()):
             raise SignInNameMissingError("Either an email or username is required.")
 
@@ -56,7 +55,7 @@ class UserManager:
         if profile_picture is not None and profile_picture not in os.listdir("app/static/profile_pictures/default/"):
             raise ProfilePictureInvalidError("Profile picture must be from the default options.")
         
-        hashed_password = PasswordHasher.hash(password)
+        hashed_password = PasswordHasher().hash(password)
         
         try:
             with Database.getConnection() as conn:
@@ -64,8 +63,11 @@ class UserManager:
                 cursor.execute("UPDATE users SET is_guest = %s, email = %s, username = %s, password = %s, profile_picture = %s WHERE user_id = %s;", (False, email.lower(), username.lower(), hashed_password, profile_picture, user_id))
                 
                 cursor.execute("SELECT user_id, is_guest, username, email, created_at, updated_at, profile_picture FROM users WHERE user_id = %s;", (user_id, ))
-                db_user = cursor.fetchone()[0]
-                
+                db_user = cursor.fetchone()
+
+                if not isinstance(db_user, dict):
+                    raise TypeError(f"Expected a dictionary, but got {type(db_user).__name__}")
+
                 user = User.from_dict(db_user)
                 
                 conn.commit()
@@ -109,15 +111,14 @@ class UserManager:
                 cursor.execute("SELECT user_id, is_guest, created_at, NULL as updated_at, username, NULL as email, profile_picture FROM users WHERE user_id = %s;", (user_id, ))
                 db_user = cursor.fetchone()
                 
-                if not db_user:
-                    raise UserNotFoundError("The provided user_id is not associated with any user in the database.")
+                user = User.from_dict(db_user)
+                
+                return user
         except Exception as e:
             logger.error(f"An unexpected error occurred while getting user profile from database: {e}")
             logger.error(traceback.format_exc())
             raise e
         
-        return User.from_dict(db_user)
-    
     def get_private_user_profile_by_id(self, user_id: str) -> User:
         try:
             with Database.getConnection() as conn:
@@ -125,15 +126,13 @@ class UserManager:
                 cursor.execute("SELECT user_id, is_guest, created_at, updated_at, username, email, profile_picture FROM users WHERE user_id = %s;", (user_id, ))
                 db_user = cursor.fetchone()
                 
-                if not db_user:
-                    raise UserNotFoundError("The provided user_id is not associated with any user in the database.")
+                user = User.from_dict(db_user)
+                
+                return user
         except Exception as e:
             logger.error(f"An unexpected error occurred while getting user profile from database: {e}")
             logger.error(traceback.format_exc())
             raise e
-        
-        return User.from_dict(db_user)
-        ...
         
     def update_user_username(self, user_id: str, username: str) -> tuple:
         if not isinstance(username, str):
