@@ -172,6 +172,8 @@ class UserManager:
             logger.error(f"An unexpected error occurred while setting a new username: {e}")
             logger.error(traceback.format_exc())
             raise e
+        
+    """
                 
     def getUserProfilePicture(self, userID: str) -> str:
         if not path.exists(f"static/profile_pictures/{userID}.webp"):
@@ -259,5 +261,7 @@ class UserManager:
                 return profilePicture
         
         return f"/public/profile_pictures/{userID}.webp"
+    
+    """
 
 user_manager = UserManager()
