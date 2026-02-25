@@ -108,18 +108,11 @@ class UserManager:
             logger.error(traceback.format_exc())
             raise e
         
-    def get_user_profile_by_id(self, token: str, user_id: str) -> User:
-        user_id_from_token = authentication_manager.get_user_id_from_token(token)
-        
-        query = "SELECT user_id, is_guest, created_at, NULL as updated_at, username, NULL as email, profile_picture FROM users WHERE user_id = %s;"
-        param = (user_id, )
-        if user_id_from_token == user_id:
-            query = "SELECT user_id, is_guest, created_at, updated_at, username, email, profile_picture FROM users WHERE user_id = %s;"
-            
+    def get_public_user_profile_by_id(self, user_id: str) -> User:
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                cursor.execute(query, param)
+                cursor.execute("SELECT user_id, is_guest, created_at, NULL as updated_at, username, NULL as email, profile_picture FROM users WHERE user_id = %s;", (user_id, ))
                 db_user = cursor.fetchone()
                 
                 if not db_user:
@@ -130,6 +123,23 @@ class UserManager:
             raise e
         
         return User.from_dict(db_user)
+    
+    def get_private_user_profile_by_id(self, user_id: str) -> User:
+        try:
+            with Database.getConnection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute("SELECT user_id, is_guest, created_at, updated_at, username, email, profile_picture FROM users WHERE user_id = %s;", (user_id, ))
+                db_user = cursor.fetchone()
+                
+                if not db_user:
+                    raise UserNotFoundError("The provided user_id is not associated with any user in the database.")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while getting user profile from database: {e}")
+            logger.error(traceback.format_exc())
+            raise e
+        
+        return User.from_dict(db_user)
+        ...
         
     def update_user_username(self, token: str, username: str) -> tuple:
         user_id = authentication_manager.get_user_id_from_token(token)
