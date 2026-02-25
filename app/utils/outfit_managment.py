@@ -9,6 +9,7 @@ from app.utils.exceptions import OutfitNotFoundError, OutfitNameTooShortError, O
 from typing import Optional
 from mysql.connector.errors import IntegrityError
 from app.models.outfit import Outfit, OutfitTags, OutfitSeason
+from app.utils.helpers import helper
 from app.utils.authentication_managment import authentication_manager
 from app.utils.clothing_managment import clothing_manager
 from app.utils.image_managment import image_manager
@@ -231,7 +232,7 @@ class OutfitManager:
 
         return outfit
 
-    def get_list_of_outfits_by_user_id(self, token: str, user_id: Optional[str], limit: int = 1000, offset: int = 0) -> list[Outfit]:
+    def get_list_of_outfits_by_user_id(self, user_id: Optional[str], limit: int = 1000, offset: int = 0) -> list[Outfit]:
         if not isinstance(user_id, str) or not user_id.strip():
             raise OutfitIDMissingError("The provided user ID is missing or invalid.")
         
@@ -240,26 +241,20 @@ class OutfitManager:
 
         if not isinstance(offset, int) or offset < 0:
             raise OutfitOffsetInvalidError("The offset must be a positive integer.")
-
-        user_id_from_token = authentication_manager.get_user_id_from_token(token)
         
         outfit_list: list[Outfit] = []
-
-        statement = f"SELECT outfit_id, is_public, is_favorite, name, user_id, description, image_id, created_at FROM outfits WHERE user_id = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
-        params = (user_id, )
-        
-        if user_id != user_id_from_token:
-            statement = f"SELECT outfit_id, is_public, is_favorite, name, created_at, user_id, image_id, description FROM outfits WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
-            params = (user_id, True, )
         
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                cursor.execute(statement, params)
+                query = f"SELECT outfit_id, is_public, is_favorite, name, user_id, description, image_id, created_at FROM outfits WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
+                cursor.execute(query, (user_id, True, ))
 
                 outfits = cursor.fetchall()
                 
                 for outfit in outfits:
+                    outfit = helper.ensure_dict(outfit)
+                    
                     cursor.execute("SELECT season FROM outfit_seasons WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
                     seasons = cursor.fetchall()
                     
@@ -269,7 +264,8 @@ class OutfitManager:
                     cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
                     clothing_list = cursor.fetchall()
                     
-                    outfit_instance = Outfit.from_dict(outfit, [clothing_id.get("clothing_id") for clothing_id in clothing_list], [OutfitSeason[season.get("season")] for season in seasons], [OutfitTags[tag.get("tag")] for tag in tags])
+                    # TODO!: Clean code up not everything in one line
+                    outfit_instance = Outfit.from_dict(outfit, [helper.ensure_dict(clothing_id).get("clothing_id", "") for clothing_id in clothing_list if helper.ensure_dict(clothing_id).get("clothing_id")], [OutfitSeason[helper.ensure_dict(season).get("season", "")] for season in seasons], [OutfitTags[helper.ensure_dict(tag).get("tag", "")] for tag in tags])
                     outfit_list.append(outfit_instance)
         except Exception as e:
             logger.error(f"An unexpected error occurred while retrieving outfits for user {user_id}: {e}")

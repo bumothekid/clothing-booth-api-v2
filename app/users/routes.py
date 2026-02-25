@@ -12,11 +12,10 @@ users = Blueprint("users", __name__)
 @limiter.limit('5 per minute')
 @authorize_request
 def get_outfit_list(user_id: str):
-    token = request.headers["Authorization"]
     limit = request.args.get("limit", 1000, type=int)
     offset = request.args.get("offset", 0, type=int)
 
-    outfit_list = outfit_manager.get_list_of_outfits_by_user_id(token, user_id, limit, offset)
+    outfit_list = outfit_manager.get_list_of_outfits_by_user_id(user_id, limit, offset)
 
     return jsonify({"limit": limit, "offset": offset, "outfits": [outfit.to_dict() for outfit in outfit_list]}), 200
     
