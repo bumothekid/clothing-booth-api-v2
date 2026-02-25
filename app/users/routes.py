@@ -186,3 +186,5 @@ def deleteMyUserProfilePicture(token: str):
     
     return jsonify({"message": "Profile picture deleted successfully"}), 200
 """
+
+# TODO: Create endpoint to delete account
