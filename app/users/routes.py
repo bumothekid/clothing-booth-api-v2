@@ -45,12 +45,11 @@ def create_outfit():
 @limiter.limit('5 per minute')
 @authorize_request
 def get_clothing_list(user_id: str):
-    token = request.headers["Authorization"]
     limit = request.args.get("limit", 1000, type=int)
     offset = request.args.get("offset", 0, type=int)
     category = request.args.get("category", None, type=str)
 
-    clothing_list = clothing_manager.get_list_of_clothing_by_user_id(token, user_id, limit, offset, category)
+    clothing_list = clothing_manager.get_list_of_clothing_by_user_id(user_id, limit, offset, category)
 
     return jsonify({"limit": limit, "offset": offset, "clothing": [clothing.to_dict() for clothing in clothing_list]}), 200
 
@@ -71,16 +70,16 @@ def create_clothing_piece():
     tags = data.get("tags", [])
     image_id = data.get("image_id", None)
 
-    clothing = clothing_manager.create_clothing(token, name, category, image_id, color, seasons, tags, description)
+    clothing = clothing_manager.create_clothing(g.user_id, name, category, image_id, color, seasons, tags, description)
 
     return jsonify({"clothing": clothing.to_dict()}), 201
 
+"""
 @users.route('/me/username', methods=['PUT'])
 @authorize_request
 @limiter.limit('1 per hour')
 def setUsername():
     data = request.get_json()
-    token = request.headers["Authorization"]
     if not data:
         return jsonify({"error": "No data provided"}), 400
     
@@ -88,7 +87,7 @@ def setUsername():
         return jsonify({"error": "Missing username"}), 400
     
     try:
-        username, oldUsername = user_manager.setUsername(data["username"], token)
+        username, oldUsername = user_manager.setUsername(data["username"], g.user_id)
     except (UsernameTooShortError, UsernameTooLongError) as e:
         return jsonify({"error": str(e)}), 400
     except UsernameAlreadyInUseError as e:
@@ -186,3 +185,4 @@ def deleteMyUserProfilePicture(token: str):
     #    return jsonify({"error": str(e)}), 404
     
     return jsonify({"message": "Profile picture deleted successfully"}), 200
+"""

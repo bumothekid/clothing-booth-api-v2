@@ -71,7 +71,7 @@ class ClothingManager:
             logger.error(traceback.format_exc())
             raise e
 
-    def create_clothing(self, token: str, name: str, category: str, image_id: str, color: Optional[str], seasons: Optional[list] = None, tags: Optional[list] = None, description: Optional[str] = None) -> Clothing:
+    def create_clothing(self, user_id: str, name: str, category: str, image_id: str, color: Optional[str], seasons: Optional[list] = None, tags: Optional[list] = None, description: Optional[str] = None) -> Clothing:
         if not isinstance(name, str) or not name.strip():
             raise ClothingNameMissingError("The name is missing.")
         
@@ -114,7 +114,6 @@ class ClothingManager:
         
             tags = [ClothingTags[tag.upper()] for tag in tags]
 
-        user_id = authentication_manager.get_user_id_from_token(token)
         clothing_id = str(uuid.uuid4())
 
         clothing = Clothing(clothing_id, True, name, ClothingCategory[category.upper()], color, datetime.now(), user_id, image_id, seasons, tags, description)
@@ -168,20 +167,15 @@ class ClothingManager:
         
         return clothing
 
-    def get_list_of_clothing_by_user_id(self, token: str, user_id: Optional[str], limit: int = 1000, offset: int = 0, category: str = None) -> list[Clothing]:
+    def get_list_of_clothing_by_user_id(self, user_id: Optional[str], limit: int = 1000, offset: int = 0, category: str = None) -> list[Clothing]:
         if not isinstance(user_id, str) or not user_id.strip():
             raise ClothingIDMissingError("The provided user ID is missing or invalid.")
 
-        user_id_from_token = authentication_manager.get_user_id_from_token(token)
         clothes_list: list[Clothing] = []
         
-        statement = "SELECT clothing_id, is_public, name, category, color, created_at, user_id, image_id, description FROM clothing WHERE user_id = %s"
+        statement = "SELECT clothing_id, is_public, name, category, color, created_at, user_id, image_id, description FROM clothing WHERE user_id = %s AND is_public = %s"
         statement_order = f"ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
-        params = [user_id]
-        
-        if user_id != user_id_from_token:
-            statement += f"AND is_public = %s"
-            params.append(True)
+        params = [user_id, True]
             
         if isinstance(category, str):
             if category.upper() not in ClothingCategory.__members__:
