@@ -141,9 +141,7 @@ class UserManager:
         return User.from_dict(db_user)
         ...
         
-    def update_user_username(self, token: str, username: str) -> tuple:
-        user_id = authentication_manager.get_user_id_from_token(token)
-        
+    def update_user_username(self, user_id: str, username: str) -> tuple:
         if not isinstance(username, str):
             raise UsernameMissingError("Username is required.")
         
