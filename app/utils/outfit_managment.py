@@ -232,7 +232,7 @@ class OutfitManager:
 
         return outfit
 
-    def get_list_of_outfits_by_user_id(self, user_id: Optional[str], limit: int = 1000, offset: int = 0) -> list[Outfit]:
+    def get_list_of_outfits_by_user_id(self, user_id: Optional[str], limit: int = 1000, offset: int = 0, include_private: bool = True) -> list[Outfit]:
         if not isinstance(user_id, str) or not user_id.strip():
             raise OutfitIDMissingError("The provided user ID is missing or invalid.")
         
@@ -244,11 +244,30 @@ class OutfitManager:
         
         outfit_list: list[Outfit] = []
         
+        conditions: list[str] = ["user_id = %s"]
+        params: list = [user_id]
+        
+        if not include_private:
+            conditions.append("is_public = %s")
+            params.append(True)
+            
+        where_clause = " AND ".join(conditions)
+        
+        statement = f"""
+            SELECT outfit_id, is_public, is_favorite, name, user_id, description, image_id, created_at
+            FROM clothing
+            WHERE {where_clause}
+            ORDER BY created_at DESC
+            LIMIT %s
+            OFFSET %s;
+        """
+        
+        params.extend([limit, offset])
+        
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor(dictionary=True)
-                query = f"SELECT outfit_id, is_public, is_favorite, name, user_id, description, image_id, created_at FROM outfits WHERE user_id = %s AND is_public = %s ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
-                cursor.execute(query, (user_id, True, ))
+                cursor.execute(statement, tuple(params))
 
                 outfits = cursor.fetchall()
                 
