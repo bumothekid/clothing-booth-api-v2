@@ -167,24 +167,38 @@ class ClothingManager:
         
         return clothing
 
-    def get_list_of_clothing_by_user_id(self, user_id: Optional[str], category: Optional[str], limit: int = 1000, offset: int = 0) -> list[Clothing]:
+    def get_list_of_clothing_by_user_id(self, user_id: Optional[str], category: Optional[str], limit: int = 1000, offset: int = 0, include_private: bool = False) -> list[Clothing]:
         if not isinstance(user_id, str) or not user_id.strip():
             raise ClothingIDMissingError("The provided user ID is missing or invalid.")
 
         clothes_list: list[Clothing] = []
         
-        statement = "SELECT clothing_id, is_public, name, category, color, created_at, user_id, image_id, description FROM clothing WHERE user_id = %s AND is_public = %s"
-        statement_order = f"ORDER BY created_at DESC LIMIT {limit} OFFSET {offset};"
-        params = [user_id, True]
+        conditions: list[str] = ["user_id = %s"]
+        params: list = [user_id]
+        
+        if not include_private:
+            conditions.append("is_public = %s")
+            params.append(True)
             
         if isinstance(category, str):
             if category.upper() not in ClothingCategory.__members__:
                 raise ClothingCategoryMissingError("The provided category is not valid. It should be one of the following: " + ", ".join(ClothingCategory.__members__.keys()))
             
-            statement += "AND category = %s"
+            conditions.append("category = %s")
             params.append(category)
             
-        statement += statement_order
+        where_clause = " AND ".join(conditions)
+            
+        statement = f"""
+            SELECT clothing_id, is_public, name, category, color, created_at, user_id, image_id, description
+            FROM clothing
+            WHERE {where_clause}
+            ORDER BY created_at DESC
+            LIMIT %s
+            OFFSET %s
+        """
+        
+        params.extend([limit, offset])
         
         try:
             with Database.getConnection() as conn:
