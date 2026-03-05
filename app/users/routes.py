@@ -19,7 +19,16 @@ def get_outfit_list(user_id: str):
 
     return jsonify({"limit": limit, "offset": offset, "outfits": [outfit.to_dict() for outfit in outfit_list]}), 200
 
-# TODO: /me/ for private outfits...
+@users.route('/me/outfits', methods=['GET'])
+@limiter.limit('5 per minute')
+@authorize_request
+def get_outfit_list_private():
+    limit = request.args.get("limit", 1000, type=int)
+    offset = request.args.get("offset", 0, type=int)
+
+    outfit_list = outfit_manager.get_list_of_outfits_by_user_id(g.user_id, limit, offset, include_private=True)
+
+    return jsonify({"limit": limit, "offset": offset, "outfits": [outfit.to_dict() for outfit in outfit_list]}), 200
     
 @users.route('/me/outfits', methods=['POST'])
 @limiter.limit('5 per minute')
