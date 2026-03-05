@@ -232,7 +232,7 @@ class OutfitManager:
 
         return outfit
 
-    def get_list_of_outfits_by_user_id(self, user_id: Optional[str], limit: int = 1000, offset: int = 0, include_private: bool = True) -> list[Outfit]:
+    def get_list_of_outfits_by_user_id(self, user_id: Optional[str], limit: int = 1000, offset: int = 0, include_private: bool = False) -> list[Outfit]:
         if not isinstance(user_id, str) or not user_id.strip():
             raise OutfitIDMissingError("The provided user ID is missing or invalid.")
         
