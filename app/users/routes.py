@@ -18,6 +18,8 @@ def get_outfit_list(user_id: str):
     outfit_list = outfit_manager.get_list_of_outfits_by_user_id(user_id, limit, offset)
 
     return jsonify({"limit": limit, "offset": offset, "outfits": [outfit.to_dict() for outfit in outfit_list]}), 200
+
+# TODO: /me/ for private outfits...
     
 @users.route('/me/outfits', methods=['POST'])
 @limiter.limit('5 per minute')
