@@ -195,7 +195,7 @@ class ClothingManager:
             WHERE {where_clause}
             ORDER BY created_at DESC
             LIMIT %s
-            OFFSET %s
+            OFFSET %s;
         """
         
         params.extend([limit, offset])
