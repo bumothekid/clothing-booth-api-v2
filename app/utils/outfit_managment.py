@@ -264,8 +264,29 @@ class OutfitManager:
                     cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
                     clothing_list = cursor.fetchall()
                     
-                    # TODO!: Clean code up not everything in one line
-                    outfit_instance = Outfit.from_dict(outfit, [helper.ensure_dict(clothing_id).get("clothing_id", "") for clothing_id in clothing_list if helper.ensure_dict(clothing_id).get("clothing_id")], [OutfitSeason[helper.ensure_dict(season).get("season", "")] for season in seasons], [OutfitTags[helper.ensure_dict(tag).get("tag", "")] for tag in tags])
+                    clothing_ids = [
+                        helper.ensure_dict(clothing_id).get("clothing_id", "")
+                        for clothing_id in clothing_list
+                        if helper.ensure_dict(clothing_id).get("clothing_id")
+                    ]
+
+                    seasons_list = [
+                        OutfitSeason[helper.ensure_dict(season).get("season", "")]
+                        for season in seasons
+                    ]
+
+                    tags_list = [
+                        OutfitTags[helper.ensure_dict(tag).get("tag", "")]
+                        for tag in tags
+                    ]
+
+                    outfit_instance = Outfit.from_dict(
+                        outfit,
+                        clothing_ids,
+                        seasons_list,
+                        tags_list
+                    )
+                    
                     outfit_list.append(outfit_instance)
         except Exception as e:
             logger.error(f"An unexpected error occurred while retrieving outfits for user {user_id}: {e}")
