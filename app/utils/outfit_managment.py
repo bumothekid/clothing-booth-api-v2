@@ -255,7 +255,7 @@ class OutfitManager:
         
         statement = f"""
             SELECT outfit_id, is_public, is_favorite, name, user_id, description, image_id, created_at
-            FROM clothing
+            FROM outfits
             WHERE {where_clause}
             ORDER BY created_at DESC
             LIMIT %s
