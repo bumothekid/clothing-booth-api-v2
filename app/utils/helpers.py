@@ -17,5 +17,14 @@ class HelperFunctions:
             raise TypeError(f"Expected a dictionary, but got {type(result).__name__}")
         
         return result
+    
+    @staticmethod
+    def build_paginated_response(items, limit, offset, total):
+        return {
+            "items": items,
+            "limit": limit,
+            "offset": offset,
+            "total": total
+        }
 
 helper = HelperFunctions()
