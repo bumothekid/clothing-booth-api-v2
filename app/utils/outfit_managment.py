@@ -232,7 +232,7 @@ class OutfitManager:
 
         return outfit
 
-    def get_list_of_outfits_by_user_id(self, user_id: Optional[str], limit: int = 1000, offset: int = 0, include_private: bool = False) -> list[Outfit]:
+    def get_list_of_outfits_by_user_id(self, user_id: Optional[str], limit: int = 1000, offset: int = 0, include_private: bool = False) -> tuple[list[Outfit], int]:
         if not isinstance(user_id, str) or not user_id.strip():
             raise OutfitIDMissingError("The provided user ID is missing or invalid.")
         
@@ -243,6 +243,7 @@ class OutfitManager:
             raise OutfitOffsetInvalidError("The offset must be a positive integer.")
         
         outfit_list: list[Outfit] = []
+        total_outfits: int = 0
         
         conditions: list[str] = ["user_id = %s"]
         params: list = [user_id]
@@ -254,7 +255,7 @@ class OutfitManager:
         where_clause = " AND ".join(conditions)
         
         statement = f"""
-            SELECT outfit_id, is_public, is_favorite, name, user_id, description, image_id, created_at
+            SELECT outfit_id, is_public, is_favorite, name, user_id, image_id, created_at
             FROM outfits
             WHERE {where_clause}
             ORDER BY created_at DESC
@@ -262,11 +263,18 @@ class OutfitManager:
             OFFSET %s;
         """
         
-        params.extend([limit, offset])
-        
         try:
             with Database.getConnection() as conn:
                 cursor = conn.cursor(dictionary=True)
+                
+                cursor.execute("SELECT COUNT(*) as total FROM outfits WHERE " + where_clause, tuple(params))
+                total_result = cursor.fetchone()
+                
+                total_result = helper.ensure_dict(total_result)
+                total_outfits = total_result.get("total", 0)
+                
+                params.extend([limit, offset])
+                
                 cursor.execute(statement, tuple(params))
 
                 outfits = cursor.fetchall()
@@ -312,7 +320,7 @@ class OutfitManager:
             logger.error(traceback.format_exc())
             raise e
 
-        return outfit_list
+        return outfit_list, total_outfits
         
     def update_outfit(self, token: str, outfit_id: str, name: Optional[str] = None, is_public: Optional[bool] = None, seasons: Optional[list[str]] = None, tags: Optional[list[str]] = None, clothing_ids: Optional[list[str]] = None, description: Optional[str] = None) -> Outfit:
         user_id = authentication_manager.get_user_id_from_token(token)

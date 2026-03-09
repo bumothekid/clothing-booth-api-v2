@@ -1,9 +1,10 @@
-from flask import Blueprint, request, jsonify, Response, g
+from flask import Blueprint, request, jsonify, g
 from ..utils.user_managment import user_manager
 from app.utils.outfit_managment import outfit_manager
 from app.utils.clothing_managment import clothing_manager
 from ..utils.exceptions import UsernameTooShortError, UsernameTooLongError, UsernameAlreadyInUseError, UserNotFoundError, UnsupportedFileTypeError
 from ..utils.limiter import limiter
+from ..utils.helpers import helper
 from ..utils.authentication_managment import authorize_request
 
 users = Blueprint("users", __name__)
@@ -15,9 +16,10 @@ def get_outfit_list(user_id: str):
     limit = request.args.get("limit", 1000, type=int)
     offset = request.args.get("offset", 0, type=int)
 
-    outfit_list = outfit_manager.get_list_of_outfits_by_user_id(user_id, limit, offset)
+    outfit_list, total = outfit_manager.get_list_of_outfits_by_user_id(user_id, limit, offset)
 
-    return jsonify({"limit": limit, "offset": offset, "outfits": [outfit.to_dict() for outfit in outfit_list]}), 200
+    response = helper.build_paginated_response([o.to_dict() for o in outfit_list], limit, offset, total)
+    return jsonify(response), 200
 
 @users.route('/me/outfits', methods=['GET'])
 @limiter.limit('5 per minute')
@@ -26,9 +28,10 @@ def get_outfit_list_private():
     limit = request.args.get("limit", 1000, type=int)
     offset = request.args.get("offset", 0, type=int)
 
-    outfit_list = outfit_manager.get_list_of_outfits_by_user_id(g.user_id, limit, offset, include_private=True)
+    outfit_list, total = outfit_manager.get_list_of_outfits_by_user_id(g.user_id, limit, offset, include_private=True)
 
-    return jsonify({"limit": limit, "offset": offset, "outfits": [outfit.to_dict() for outfit in outfit_list]}), 200
+    response = helper.build_paginated_response([o.to_dict() for o in outfit_list], limit, offset, total)
+    return jsonify(response), 200
     
 @users.route('/me/outfits', methods=['POST'])
 @limiter.limit('5 per minute')
