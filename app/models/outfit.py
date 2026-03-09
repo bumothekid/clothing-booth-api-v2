@@ -20,15 +20,25 @@ class OutfitSeason(str, Enum):
     WINTER = "Winter"
 
 @dataclass
+class CanvasPlacement:
+    clothing_id: str
+    x: float
+    y: float
+    z: int
+    scale: float
+    rotation: float
+
+@dataclass
 class Outfit:
     outfit_id: str
     is_public: bool
     is_favorite: bool
     name: str
     created_at: datetime
+    updated_at: datetime
     user_id: str
-    clothing_ids: list[str]
     image_id: str
+    scene: Optional[list[CanvasPlacement]] = None
     seasons: Optional[list[OutfitSeason]] = None
     tags: Optional[list[OutfitTags]] = None
     description: Optional[str] = None
@@ -38,20 +48,24 @@ class Outfit:
         
         if isinstance(data["created_at"], datetime):
             data["created_at"] = data["created_at"].replace(tzinfo=timezone.utc).isoformat(timespec="seconds")
+            
+        if isinstance(data["updated_at"], datetime):
+            data["updated_at"] = data["updated_at"].replace(tzinfo=timezone.utc).isoformat(timespec="seconds")
         return data
     
     @classmethod
-    def from_dict(self, core: dict, clothing_ids: list[str], seasons: Optional[list[OutfitSeason]], tags: Optional[list[OutfitTags]]):
+    def from_dict(cls, core: dict, scene: Optional[list[CanvasPlacement]], seasons: Optional[list[OutfitSeason]], tags: Optional[list[OutfitTags]]):
         return Outfit(
             outfit_id=core.get("outfit_id"),
             is_public=bool(core.get("is_public")),
             is_favorite=bool(core.get("is_favorite")),
             name=core.get("name"),
             created_at=core.get("created_at"),
+            updated_at=core.get("updated_at"),
             user_id=core.get("user_id"),
             image_id=core.get("image_id"),
-            clothing_ids=clothing_ids,
+            scene=scene,
             seasons=seasons,
             tags=tags,
             description=core.get("description")
-            )
+        )

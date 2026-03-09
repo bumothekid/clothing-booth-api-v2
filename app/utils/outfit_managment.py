@@ -8,7 +8,7 @@ from app.utils.database import Database
 from app.utils.exceptions import OutfitNotFoundError, OutfitNameTooShortError, OutfitNameTooLongError, OutfitDescriptionTooLongError, OutfitNameMissingError, OutfitClothingIDsMissingError, OutfitClothingIDInvalidError, OutfitSeasonsInvalidError, OutfitTagsInvalidError, OutfitIDMissingError, OutfitPermissionError, OutfitLimitInvalidError, OutfitOffsetInvalidError, OutfitValidationError, OutfitPublicMissingError, OutfitFavoriteMissingError, OutfitSceneMissingError, OutfitSceneInvalidError, OutfitPreviewInvalidError
 from typing import Optional
 from mysql.connector.errors import IntegrityError
-from app.models.outfit import Outfit, OutfitTags, OutfitSeason
+from app.models.outfit import Outfit, OutfitTags, OutfitSeason, CanvasPlacement
 from app.utils.helpers import helper
 from app.utils.authentication_managment import authentication_manager
 from app.utils.clothing_managment import clothing_manager
@@ -29,7 +29,6 @@ class OutfitManager:
                             is_favorite BOOLEAN DEFAULT FALSE,
                             user_id VARCHAR(36) NOT NULL,
                             image_id VARCHAR(36) NOT NULL,
-                            scene_json JSON NOT NULL,
                             description VARCHAR(255) DEFAULT NULL,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -58,6 +57,11 @@ class OutfitManager:
                             CREATE TABLE IF NOT EXISTS outfit_clothing (
                                 outfit_id VARCHAR(36) NOT NULL,
                                 clothing_id VARCHAR(36) NOT NULL,
+                                position_x FLOAT NOT NULL,
+                                position_y FLOAT NOT NULL,
+                                z_index INT NOT NULL,
+                                scale FLOAT NOT NULL,
+                                rotation FLOAT NOT NULL,
                                 PRIMARY KEY (outfit_id, clothing_id),
                                 INDEX (clothing_id),
                                 FOREIGN KEY (outfit_id) REFERENCES outfits(outfit_id) ON DELETE CASCADE,
@@ -71,7 +75,7 @@ class OutfitManager:
         deleted_ids: list[str] = []
         
         statement = """
-            SELECT outfit_id, name, image_id, is_favorite, is_public, created_at, updated_at, tags, seasons, description
+            SELECT outfit_id, name, image_id, is_favorite, is_public, created_at, updated_at, description, user_id
             FROM outfits
             WHERE user_id = %s AND updated_at > %s AND deleted_at IS NULL
             ORDER BY updated_at ASC
@@ -93,15 +97,21 @@ class OutfitManager:
                     cursor.execute("SELECT tag FROM outfit_tags WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
                     tags = cursor.fetchall()
                     
-                    cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
+                    cursor.execute("SELECT clothing_id, position_x, position_y, z_index, scale, rotation FROM outfit_clothing WHERE outfit_id = %s ORDER BY z_index;", (outfit.get("outfit_id"),))
                     clothing_list = cursor.fetchall()
                     
-                    clothing_ids = [
-                        helper.ensure_dict(clothing_id).get("clothing_id", "")
-                        for clothing_id in clothing_list
-                        if helper.ensure_dict(clothing_id).get("clothing_id")
+                    clothing_canvas = [
+                        CanvasPlacement(
+                            clothing_id=helper.ensure_dict(clothing).get("clothing_id"),
+                            x=helper.ensure_dict(clothing).get("position_x"),
+                            y=helper.ensure_dict(clothing).get("position_y"),
+                            z=helper.ensure_dict(clothing).get("z_index"),
+                            scale=helper.ensure_dict(clothing).get("scale"),
+                            rotation=helper.ensure_dict(clothing).get("rotation")
+                        )
+                        for clothing in clothing_list
                     ]
-
+                    
                     seasons_list = [
                         OutfitSeason[helper.ensure_dict(season).get("season", "")]
                         for season in seasons
@@ -114,7 +124,7 @@ class OutfitManager:
 
                     outfit_instance = Outfit.from_dict(
                         outfit,
-                        clothing_ids,
+                        clothing_canvas,
                         seasons_list,
                         tags_list
                     )
@@ -180,14 +190,14 @@ class OutfitManager:
         if isinstance(description, str) and len(description) > 255:
             raise OutfitDescriptionTooLongError("The provided description is too long, it has to be at most 255 characters long.")
 
-        if not isinstance(scene, dict):
+        if not isinstance(scene, list):
             raise OutfitSceneMissingError("scene is missing or invalid.")
         
         if len(scene) < 2:
             raise OutfitSceneInvalidError("scene.items must contain at least 2 items.")
 
         clothing_ids = []
-        for item in scene.values():
+        for item in scene:
             cid = item.get("clothing_id")
             if not isinstance(cid, str) or not cid.strip():
                 raise OutfitSceneInvalidError("scene item clothing_id missing.")
@@ -210,8 +220,9 @@ class OutfitManager:
                     raise OutfitClothingIDInvalidError(f"Clothing ID {cid} invalid or not owned by user.")
         
         validated_items = []
+        clothing_canvas: list[CanvasPlacement] = []
 
-        for item in scene.values():
+        for item in scene:
             clothing_id = item["clothing_id"]
             image_id = clothing_manager.get_image_id_by_clothing_id(
                 user_id=user_id,
@@ -222,6 +233,8 @@ class OutfitManager:
                 "item": item,
                 "image_id": image_id
             })
+            
+            clothing_canvas.append(CanvasPlacement(clothing_id=clothing_id, x=item["x"], y=item["y"], z=item["z"], scale=item["scale"], rotation=item["rotation"]))
         
         _, image_id =image_manager.generate_outfit_preview(items=validated_items)
 
@@ -231,8 +244,9 @@ class OutfitManager:
             is_favorite=is_favorite,
             name=name,
             created_at=datetime.now(),
+            updated_at=datetime.now(),
             user_id=user_id,
-            clothing_ids=clothing_ids,
+            scene=clothing_canvas,
             image_id=image_id,
             seasons=seasons,
             tags=tags,
@@ -243,10 +257,10 @@ class OutfitManager:
             with Database.getConnection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT INTO outfits(outfit_id, is_public, is_favorite, name, user_id, image_id, description, scene_json)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+                    INSERT INTO outfits(outfit_id, is_public, is_favorite, name, user_id, image_id, description)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s);
                 """, (
-                    outfit_id, is_public, is_favorite, name, user_id, image_id, description, json.dumps(scene)
+                    outfit_id, is_public, is_favorite, name, user_id, image_id, description, 
                 ))
 
                 if outfit.seasons:
@@ -255,8 +269,8 @@ class OutfitManager:
                 if outfit.tags:
                     for tag in outfit.tags:
                         cursor.execute("INSERT INTO outfit_tags(outfit_id, tag) VALUES (%s, %s);", (outfit_id, tag.name))
-                for cid in clothing_ids:
-                    cursor.execute("INSERT INTO outfit_clothing(outfit_id, clothing_id) VALUES (%s, %s);", (outfit_id, cid))
+                for item in clothing_canvas:
+                    cursor.execute("INSERT INTO outfit_clothing(outfit_id, clothing_id, position_x, position_y, z_index, scale, rotation) VALUES (%s, %s, %s, %s, %s, %s, %s);", (outfit_id, item.clothing_id, item.x, item.y, item.z, item.scale, item.rotation))
 
                 conn.commit()
         except Exception as e:
@@ -295,8 +309,22 @@ class OutfitManager:
                     
                 cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit_id,))
                 clothing_list = cursor.fetchall()
+                
+                clothing_list = helper.ensure_dict(clothing_list)
+                    
+                clothing_canvas = [
+                    CanvasPlacement(
+                        clothing_id=helper.ensure_dict(clothing).get("clothing_id"),
+                        x=helper.ensure_dict(clothing).get("position_x"),
+                        y=helper.ensure_dict(clothing).get("position_y"),
+                        z=helper.ensure_dict(clothing).get("z_index"),
+                        scale=helper.ensure_dict(clothing).get("scale"),
+                        rotation=helper.ensure_dict(clothing).get("rotation")
+                    )
+                    for clothing in clothing_list
+                ]
 
-                outfit = Outfit.from_dict(outfit, [clothing_id[0] for clothing_id in clothing_list], [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags])
+                outfit = Outfit.from_dict(outfit, clothing_canvas, [OutfitSeason[season[0]] for season in seasons], [OutfitTags[tag[0]] for tag in tags])
         except OutfitNotFoundError as e:
             raise e
         except OutfitPermissionError as e:
@@ -363,15 +391,6 @@ class OutfitManager:
                     
                     cursor.execute("SELECT tag FROM outfit_tags WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
                     tags = cursor.fetchall()
-                    
-                    cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
-                    clothing_list = cursor.fetchall()
-                    
-                    clothing_ids = [
-                        helper.ensure_dict(clothing_id).get("clothing_id", "")
-                        for clothing_id in clothing_list
-                        if helper.ensure_dict(clothing_id).get("clothing_id")
-                    ]
 
                     seasons_list = [
                         OutfitSeason[helper.ensure_dict(season).get("season", "")]
@@ -385,7 +404,7 @@ class OutfitManager:
 
                     outfit_instance = Outfit.from_dict(
                         outfit,
-                        clothing_ids,
+                        None,
                         seasons_list,
                         tags_list
                     )

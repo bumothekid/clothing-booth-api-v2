@@ -10,7 +10,9 @@ from ..utils.authentication_managment import authorize_request
 
 users = Blueprint("users", __name__)
 
-@users.route("/users/me/outfits/sync", methods=["GET"])
+@users.route("/me/outfits/sync", methods=["GET"])
+@limiter.limit('5 per minute')
+@authorize_request
 def sync_my_outfits():
     updated_since_param = request.args.get("updated_since")
 
