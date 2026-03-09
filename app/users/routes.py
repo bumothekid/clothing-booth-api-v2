@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify, g
 from ..utils.user_managment import user_manager
 from app.utils.outfit_managment import outfit_manager
@@ -8,6 +9,31 @@ from ..utils.helpers import helper
 from ..utils.authentication_managment import authorize_request
 
 users = Blueprint("users", __name__)
+
+@users.route("/users/me/outfits/sync", methods=["GET"])
+def sync_my_outfits():
+    updated_since_param = request.args.get("updated_since")
+
+    if updated_since_param:
+        try:
+            updated_since = datetime.fromisoformat(updated_since_param)
+            if updated_since.tzinfo is None:
+                updated_since = updated_since.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return jsonify({"error": "Invalid updated_since timestamp"}), 400
+    else:
+        updated_since = datetime.fromtimestamp(0, tz=timezone.utc)
+
+    updated_outfits, deleted_outfit_ids = outfit_manager.sync_outfits(
+        user_id=g.user_id,
+        updated_since=updated_since
+    )
+
+    return jsonify({
+        "updated": [o.to_dict() for o in updated_outfits],
+        "deleted": deleted_outfit_ids,
+        "server_time": datetime.now(timezone.utc).isoformat()
+    }), 200
 
 @users.route('/<user_id>/outfits', methods=['GET'])
 @limiter.limit('5 per minute')

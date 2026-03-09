@@ -33,6 +33,7 @@ class OutfitManager:
                             description VARCHAR(255) DEFAULT NULL,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                            deleted_at TIMESTAMP DEFAULT NULL,
                             FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
                             );
                             """)
@@ -64,6 +65,81 @@ class OutfitManager:
                             );
                             """)
             conn.commit()
+            
+    def sync_outfits(self, user_id: str, updated_since: datetime) -> tuple[list[Outfit], list[str]]:
+        updated_outfits: list[Outfit] = []
+        deleted_ids: list[str] = []
+        
+        statement = """
+            SELECT outfit_id, name, image_id, is_favorite, is_public, created_at, updated_at, tags, seasons, description
+            FROM outfits
+            WHERE user_id = %s AND updated_at > %s AND deleted_at IS NULL
+            ORDER BY updated_at ASC
+        """
+        
+        try:
+            with Database.getConnection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(statement, (user_id, updated_since,))
+
+                updated_rows = cursor.fetchall()
+                
+                for outfit in updated_rows:
+                    outfit = helper.ensure_dict(outfit)
+                    
+                    cursor.execute("SELECT season FROM outfit_seasons WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
+                    seasons = cursor.fetchall()
+                    
+                    cursor.execute("SELECT tag FROM outfit_tags WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
+                    tags = cursor.fetchall()
+                    
+                    cursor.execute("SELECT clothing_id FROM outfit_clothing WHERE outfit_id = %s;", (outfit.get("outfit_id"),))
+                    clothing_list = cursor.fetchall()
+                    
+                    clothing_ids = [
+                        helper.ensure_dict(clothing_id).get("clothing_id", "")
+                        for clothing_id in clothing_list
+                        if helper.ensure_dict(clothing_id).get("clothing_id")
+                    ]
+
+                    seasons_list = [
+                        OutfitSeason[helper.ensure_dict(season).get("season", "")]
+                        for season in seasons
+                    ]
+
+                    tags_list = [
+                        OutfitTags[helper.ensure_dict(tag).get("tag", "")]
+                        for tag in tags
+                    ]
+
+                    outfit_instance = Outfit.from_dict(
+                        outfit,
+                        clothing_ids,
+                        seasons_list,
+                        tags_list
+                    )
+                    
+                    updated_outfits.append(outfit_instance)
+                    
+                cursor.execute("""
+                    SELECT outfit_id
+                    FROM outfits
+                    WHERE user_id = %s AND deleted_at IS NOT NULL AND deleted_at > %s
+                    """,
+                    (user_id, updated_since, )
+                )
+                
+                deleted_rows = cursor.fetchall()
+                
+                for row in deleted_rows:
+                    row = helper.ensure_dict(row)
+                    deleted_ids.append(row.get("outfit_id", ""))
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while retrieving updated and deleted outfits for user {user_id}: {e}")
+            logger.error(traceback.format_exc())
+            raise e
+
+        return updated_outfits, deleted_ids
 
     def create_outfit(self, user_id: str, name: str, scene: dict, seasons: Optional[list[str]], tags: Optional[list[str]], is_public: bool, is_favorite: bool, description: Optional[str] = None) -> Outfit:
         if not isinstance(name, str) or not name.strip():
