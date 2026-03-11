@@ -28,6 +28,14 @@ Backend REST API for **Drssed**, a personal wardrobe management app that digitiz
 
 ---
 
+## Setup Instructions
+
+### Requirements
+- Python == 3.12.*
+- MySQL Server
+- Redis Server (for rate limiting)
+
+
 ## Environment Variables
 
 See `.env.example` for all required variables:
