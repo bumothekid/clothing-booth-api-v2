@@ -1,4 +1,4 @@
-# Drssed API
+# Drssed — API
 
 Backend REST API for **Drssed**, a personal wardrobe management app that digitizes clothing and outfits using automated image processing and categorization.
 
