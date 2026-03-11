@@ -2,7 +2,7 @@
 
 Backend REST API for **Drssed**, a personal wardrobe management app that digitizes clothing and outfits using automated image processing and categorization.
 
-> The iOS frontend (Swift/UIKit) is currently in private development, but planned for open source release in the future.
+This repository contains the server-side implementation. The iOS frontend is maintained separately: [drssed-ios](https://github.com/davidriegel/drssed-ios)
 
 ---
 
@@ -54,5 +54,18 @@ REDIS_URI=redis://localhost:6379
 
 LOG_LEVEL=INFO
 ```
+
+---
+
+## Related
+
+- **iOS App** → [davidriegel/drssed-ios](https://github.com/davidriegel/drssed-ios)
+- **Portfolio** → [davidriegel.dev](https://davidriegel.dev)
+
+---
+
+## About the Project
+
+Drssed started as a personal project to solve a real problem: losing track of what clothes you own. It grew into a full-stack application with a custom backend, a relational database, image processing features and a native iOS app.
 
 ---
