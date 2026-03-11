@@ -9,7 +9,6 @@ from app.utils.exceptions import ClothingNotFoundError, ClothingImageInvalidErro
 from typing import Optional
 from mysql.connector.errors import IntegrityError
 from app.models.clothing import Clothing, ClothingCategory, ClothingSeason, ClothingTags
-from app.utils.authentication_managment import authentication_manager
 from app.utils.logging import get_logger
 from app.utils.image_managment import image_manager
 import os
