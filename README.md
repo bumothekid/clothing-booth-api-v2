@@ -16,27 +16,31 @@ Backend REST API for **Drssed**, a personal wardrobe management app that digitiz
 
 ---
 
-## Tech Stack
+## Getting Started
 
-| Layer | Technology |
-|---|---|
-| Language | Python 3 |
-| Framework | Flask |
-| Database | MySQL |
-| Auth | JWT |
-| Server | Gunicorn |
-
----
-
-## Setup Instructions
-
-### Requirements
+### Prerequisites
 - Python == 3.12.*
 - MySQL Server
 - Redis Server (for rate limiting)
 
+## Installation
 
-## Environment Variables
+Clone the repository:
+
+```bash
+git clone https://github.com/davidriegel/drssed-api.git
+cd drssed-api
+```
+
+Install dependencies in a virtual environment:
+
+```bash
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Setup the enviroment variables:
 
 See `.env.example` for all required variables:
 
@@ -54,6 +58,31 @@ REDIS_URI=redis://localhost:6379
 
 LOG_LEVEL=INFO
 ```
+
+Setup the database:
+
+```bash
+mysql -u DATABASE_USERNAME -p
+CREATE DATABASE DATABASE_NAME;
+```
+
+Run the application:
+
+```bash
+gunicorn -c gunicorn_config.py main:api
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Python 3 |
+| Framework | Flask |
+| Database | MySQL |
+| Auth | JWT |
+| Server | Gunicorn |
 
 ---
 
