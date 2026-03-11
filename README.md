@@ -23,7 +23,7 @@ Backend REST API for **Drssed**, a personal wardrobe management app that digitiz
 - MySQL Server
 - Redis Server (for rate limiting)
 
-## Installation
+### Installation
 
 Clone the repository:
 
