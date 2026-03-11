@@ -12,12 +12,9 @@ from backgroundremover import bg
 from app.utils.logging import get_logger
 from app.models.clothing import ClothingCategory
 
-from transformers import AutoTokenizer
-from timm import create_model
 from sklearn.cluster import KMeans
 
 from fashion_clip.fashion_clip import FashionCLIP
-import torch
 import numpy as np
 
 fclip = FashionCLIP("fashion-clip")
