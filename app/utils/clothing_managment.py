@@ -97,7 +97,7 @@ class ClothingManager:
                     cursor.execute("SELECT season FROM clothing_seasons WHERE clothing_id = %s;", (clothing.get("clothing_id"),))
                     seasons = cursor.fetchall()
                     
-                    cursor.execute("SELECT tag FROM outfit_tags WHERE clothing_id = %s;", (clothing.get("clothing_id"),))
+                    cursor.execute("SELECT tag FROM clothing_tags WHERE clothing_id = %s;", (clothing.get("clothing_id"),))
                     tags = cursor.fetchall()
                     
                     seasons_list = [
@@ -136,7 +136,7 @@ class ClothingManager:
             logger.error(traceback.format_exc())
             raise e
 
-        return updated_outfits, deleted_ids
+        return updated_clothes, deleted_ids
 
     def create_clothing(self, user_id: str, name: str, category: str, image_id: str, color: Optional[str], seasons: Optional[list] = None, tags: Optional[list] = None, description: Optional[str] = None) -> Clothing:
         if not isinstance(name, str) or not name.strip():
