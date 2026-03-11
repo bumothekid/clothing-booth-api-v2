@@ -45,6 +45,8 @@ Setup the enviroment variables:
 See `.env.example` for all required variables:
 
 ```env
+API_BASE_URL=http://localhost:8000
+
 DATABASE_HOST=localhost
 DATABASE_PORT=3306
 DATABASE_NAME=DATABASE_NAME
