@@ -47,7 +47,7 @@ class ImageManager:
         clothing_category = self._extract_clothing_category(image_path)
         logger.info(clothing_category)
         return {
-            "image_url": str(urljoin(os.getenv("API_BASE_URL", ""), "uploads/temp/{image_id}.webp")),
+            "image_url": str(urljoin(os.getenv("API_BASE_URL", ""), f"uploads/temp/{image_id}.webp")),
             "image_id": image_id,
             "image_color": dominant_hexcode,
             "image_category": clothing_category,
@@ -166,7 +166,7 @@ class ImageManager:
         path = f"app/static/outfit_collages/{filename}.webp"
         img.save(path, "WEBP")  # optional: quality=85, method=6
 
-        public_url = str(urljoin(os.getenv("API_BASE_URL", ""), "uploads/outfit_collages/{filename}.webp"))
+        public_url = str(urljoin(os.getenv("API_BASE_URL", ""), f"uploads/outfit_collages/{filename}.webp"))
         return public_url, filename
     
     def load_clothing_image_by_id(self, image_id: str) -> Image.Image:
@@ -203,7 +203,7 @@ class ImageManager:
         path = f"app/static/outfit_collages/{filename}.webp"
         canvas.save(path, "WEBP")
         
-        public_url = str(urljoin(os.getenv("API_BASE_URL", ""), "uploads/outfit_collages/{filename}.webp"))
+        public_url = str(urljoin(os.getenv("API_BASE_URL", ""), f"uploads/outfit_collages/{filename}.webp"))
         return public_url, filename
         
     def _place_item(self, canvas: Image.Image, item_data: dict, image_id: str):
