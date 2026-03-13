@@ -26,7 +26,7 @@ CATEGORIES = [category.value for category in ClothingCategory]
 
 class ImageManager:
     
-    def process_image_preview(self, file: FileStorage) -> dict:
+    def process_image_preview(self, file: Optional[FileStorage]) -> tuple[str, str, str, str, list[str], list[str]]:
         if not isinstance(file, FileStorage) or not isinstance(file.filename, str) or not file.filename.endswith((".png", ".jpg", ".jpeg")):
             raise UnsupportedFileTypeError("The file provided is not a supported image type. Supported types are PNG, JPG, and JPEG.")
         
@@ -42,18 +42,12 @@ class ImageManager:
         processed_image.save(image_path, format="WEBP")
         
         dominant_hexcode = self._extract_dominant_color(processed_image)
-        logger.info(dominant_hexcode)
         
         clothing_category = self._extract_clothing_category(image_path)
-        logger.info(clothing_category)
-        return {
-            "image_url": str(urljoin(os.getenv("API_BASE_URL", ""), f"uploads/temp/{image_id}.webp")),
-            "image_id": image_id,
-            "image_color": dominant_hexcode,
-            "image_category": clothing_category,
-            "image_seasons": [],
-            "image_tags": []
-        }
+        
+        image_url = str(urljoin(os.getenv("API_BASE_URL", ""), f"uploads/temp/{image_id}.webp"))
+        
+        return image_url, image_id, dominant_hexcode, clothing_category, [], []
     
     def _extract_clothing_category(self, image_path: str) -> str:
         image_emb = fclip.encode_images([image_path], batch_size=1)
